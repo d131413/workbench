@@ -213,7 +213,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green)}
 
       <div class="card">
         <h2><span class="ic">🔄</span>在线更新（高级）</h2>
-        <p class="small" style="margin-bottom:10px">把工作台发布到可公开访问的网址后，填到这里，APP 每次启动会自动拉取最新版。留空则使用<b>内置版本（离线可用，推荐）</b>。</p>
+        <p class="small" style="margin-bottom:10px">已为你预填线上地址，APP 每次启动会自动拉取最新版。点<b>保存</b>立即生效；点<b>恢复内置版</b>改回离线内置版（联网失败时也会自动回退）。</p>
         <div class="row">
           <div class="fld" style="flex:1"><input id="sRemote" type="url" placeholder="https://你的地址"></div>
           <button class="btn ghost" onclick="Save.setRemote()">保存</button>
@@ -451,18 +451,19 @@ ptrEl.addEventListener('touchend',()=>{
 /* ============ 存钱 ============ */
 const Save={d:DB.get('save',{budget:0,items:[]}),save(){DB.set('save',this.d);this.render()},
   setBudget(){const v=+$('#sBudgetIn').value;if(v>0){this.d.budget=v;this.save()}},
-  setRemote(){const u=$('#sRemote').value.trim();
+  setRemote(){const raw=$('#sRemote').value.trim();
+    const u=raw?raw:'builtin';
     if(typeof Android!=='undefined'&&Android.applyRemote){Android.applyRemote(u);
-      $('#sRemoteTip').innerHTML=u?('已设为在线更新：<b>'+u+'</b><br>已即时生效，之后每次启动自动拉取最新版。'):'已清除，改用内置版本（离线可用）。';
-    }else{DB.set('remote',u);$('#sRemoteTip').innerHTML='当前在浏览器中打开，设置不会写入APP；请在手机APP内打开此页设置。';}},
-  resetRemote(){if(typeof Android!=='undefined'&&Android.applyRemote){Android.applyRemote('');$('#sRemote').value='';$('#sRemoteTip').innerHTML='已恢复<b>内置版本（离线可用）</b>，不再拉取远程，重启APP即生效。';}
+      $('#sRemoteTip').innerHTML=(u==='builtin')?'已恢复<b>内置版本（离线可用）</b>，重启APP即生效。':('已设为在线更新：<b>'+u+'</b><br>已即时生效，之后每次启动自动拉取最新版。');
+    }else{DB.set('remote',raw);$('#sRemoteTip').innerHTML='当前在浏览器中打开，设置不会写入APP；请在手机APP内打开此页设置。';}},
+  resetRemote(){if(typeof Android!=='undefined'&&Android.applyRemote){Android.applyRemote('builtin');$('#sRemote').value='';$('#sRemoteTip').innerHTML='已恢复<b>内置版本（离线可用）</b>，不再拉取远程，重启APP即生效。';}
     else{$('#sRemoteTip').innerHTML='请在手机APP内操作。';}},
   add(){const a=+$('#sAmt').value,n=$('#sNote').value.trim(),c=$('#sCat').value;if(!a)return;
     this.d.items.push({id:Date.now(),date:today(),amt:a,note:n,cat:c});$('#sAmt').value='';$('#sNote').value='';this.save()},
   del(id){const el=event&&event.target?event.target.closest('.todo'):null;if(el){el.classList.add('removing');setTimeout(()=>{this.d.items=this.d.items.filter(x=>x.id!==id);this.save()},250)}else{this.d.items=this.d.items.filter(x=>x.id!==id);this.save()}},
   render(){
     const curRemote=(typeof Android!=='undefined'&&Android.getRemoteUrl)?Android.getRemoteUrl():DB.get('remote','');
-    if($('#sRemote'))$('#sRemote').value=curRemote;
+    if($('#sRemote'))$('#sRemote').value=(curRemote==='builtin')?'':(curRemote||'https://d131413.github.io/workbench/');
     const ymNow=ym(new Date());
     const month=this.d.items.filter(r=>r.date.slice(0,7)===ymNow);
     const spent=month.reduce((s,r)=>s+r.amt,0);            // 花出去就计入，立等可现
