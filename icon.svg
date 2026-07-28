@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a3c4a0"/>
+      <stop offset="100%" stop-color="#7fa67a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" ry="96" fill="url(#bg)"/>
+  <g transform="translate(256 256)">
+    <g fill="#ffffff" opacity="0.95">
+      <circle cx="0" cy="-92" r="58"/>
+      <circle cx="88" cy="-32" r="58"/>
+      <circle cx="56" cy="84" r="58"/>
+      <circle cx="-56" cy="84" r="58"/>
+      <circle cx="-88" cy="-32" r="58"/>
+    </g>
+    <g fill="#fde6ef">
+      <ellipse cx="0" cy="-92" rx="36" ry="46" transform="rotate(0)"/>
+      <ellipse cx="88" cy="-32" rx="46" ry="36" transform="rotate(72)"/>
+      <ellipse cx="56" cy="84" rx="36" ry="46" transform="rotate(144)"/>
+      <ellipse cx="-56" cy="84" rx="46" ry="36" transform="rotate(216)"/>
+      <ellipse cx="-88" cy="-32" rx="36" ry="46" transform="rotate(288)"/>
+    </g>
+    <circle r="20" fill="#fce0ea"/>
+    <circle r="10" fill="#e4a8b8"/>
+  </g>
+  <text x="256" y="488" text-anchor="middle" font-family="-apple-system,PingFang SC,Microsoft YaHei,sans-serif" font-size="42" fill="#ffffff" font-weight="500">幸运</text>
+</svg>
