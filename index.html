@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7fa67a">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="幸运工作台">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="幸运工作台">
+<meta name="format-detection" content="telephone=no">
+<title>幸运工作台</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
+<style>
+:root{
+  --bg:#f5f0e8; --card:#ffffff; --ink:#4a443d; --sub:#a89e94; --line:#ece3d8;
+  --green:#7fa67a; --green-d:#6b9166; --pink:#e4a8b8; --blue:#8fb3c4; --orange:#e0a878;
+  --shadow:0 2px 12px rgba(120,100,80,.06); --shadow2:0 6px 20px rgba(120,100,80,.1);
+  --r:18px; --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;overscroll-behavior-y:contain}
+/* app shell：移动端375优先，PC居中 */
+#app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;box-shadow:0 0 40px rgba(0,0,0,.04)}
+@media(min-width:481px){body{background:#e8e0d4}#app{min-height:100vh;border-radius:0}}
+/* header */
+.head{position:sticky;top:0;z-index:20;background:rgba(245,240,232,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:max(14px, env(safe-area-inset-top)) 16px 10px;text-align:center;border-bottom:1px solid rgba(236,227,216,.6)}
+.head h1{font-size:17px;font-weight:600}
+.head .sub{font-size:12px;color:var(--sub);margin-top:1px}
+/* pull to refresh */
+.ptr{position:relative;min-height:100%}
+.ptr .ind{position:absolute;top:-44px;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:13px;transition:top .25s;z-index:5}
+.ptr .ind span{display:inline-block}
+.ptr .ind .sp{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--green);border-radius:50%;margin-right:7px;transition:transform .2s}
+.ptr.refreshing .ind{top:0}
+.ptr.refreshing .ind .sp{animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* views */
+.views{padding:14px 14px 90px;position:relative;overflow:hidden}
+.view{display:none}
+.view.active{display:block;animation:viewIn .3s ease}
+@keyframes viewIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+/* card */
+.card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card h2{font-size:15px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.card h2 .ic{font-size:17px}
+.sec-label{font-size:12px;color:var(--sub);margin:4px 2px 8px;font-weight:500}
+/* stat */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:4px}
+.stat{background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow);text-align:center}
+.stat .n{font-size:22px;font-weight:700}
+.stat .l{font-size:11px;color:var(--sub);margin-top:2px}
+.stat.g .n{color:var(--green)} .stat.b .n{color:var(--blue)} .stat.o .n{color:var(--orange)} .stat.p .n{color:var(--pink)}
+/* cheer */
+.cheer{background:linear-gradient(135deg,#f7f0e6,#f0e6da);border-radius:14px;padding:12px 14px;font-size:13px;color:#7a6a58;margin:10px 0;line-height:1.5}
+.cheer b{color:var(--green-d)}
+/* inputs */
+.fld{margin-bottom:10px}
+.fld label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px}
+input,select,textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:12px;font-size:14px;font-family:inherit;background:#fbfaf7;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green)}
+.row{display:flex;gap:9px;flex-wrap:wrap}
+.row>.fld{flex:1 1 120px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;background:var(--green);color:#fff;border:none;padding:11px 18px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;transition:transform .12s,filter .15s;font-family:inherit}
+.btn:active{transform:scale(.96)}
+.btn.ghost{background:#fff;color:var(--green);border:1px solid var(--green)}
+.btn.sm{padding:7px 13px;font-size:13px}
+.btn.full{width:100%}
+/* todo item（勾选/删除） */
+.todo{display:flex;align-items:center;gap:11px;padding:12px 14px;background:var(--card);border-radius:14px;margin-bottom:8px;box-shadow:var(--shadow);transition:transform .15s,opacity .25s}
+.todo .chk{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;transition:.2s;cursor:pointer}
+.todo.done .chk{background:var(--green);border-color:var(--green)}
+.todo.done .txt{text-decoration:line-through;color:var(--sub)}
+.todo .txt{flex:1;font-size:14px}
+.todo .del{color:var(--sub);font-size:18px;cursor:pointer;padding:4px;opacity:.5;transition:.15s}
+.todo .del:active{opacity:1;color:#d97757}
+.todo.removing{transform:translateX(120%);opacity:0}
+/* tag */
+.tag{display:inline-block;background:#f0eae0;color:var(--sub);font-size:11px;padding:3px 9px;border-radius:20px;margin:3px 4px 3px 0}
+.tag.err{background:#fbeae4;color:#cf6a4a} .tag.ok{background:#e6f1e4;color:#5e8a5a}
+/* list row */
+.li{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line)}
+.li:last-child{border-bottom:none}
+.li .lt{font-size:14px} .li .ls{font-size:12px;color:var(--sub)}
+.li .ld{color:var(--sub);font-size:13px;cursor:pointer}
+/* segment（健康子tab） */
+.seg{display:flex;background:#efe9df;border-radius:11px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;border:none;background:transparent;padding:8px;font-size:13px;color:var(--sub);border-radius:9px;cursor:pointer;transition:.2s;font-family:inherit}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.06);font-weight:500}
+/* recipe */
+.rpick{display:flex;gap:9px;margin-bottom:10px}
+.rpick select{flex:1}
+.rsearch{margin-bottom:10px}
+.rcard{background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.rcard .rn{font-size:15px;font-weight:600;margin-bottom:5px}
+.rcard .rc{font-size:11px;color:#fff;background:var(--green);padding:2px 8px;border-radius:10px;margin-left:6px;font-weight:400;vertical-align:middle}
+.rcard .ri{font-size:12px;color:var(--sub);margin-bottom:8px}
+.rcard .rs{font-size:13px;line-height:1.7}
+.rcard .rt{margin-top:8px;font-size:12px;color:var(--orange)}
+.rgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.rmini{background:var(--card);border-radius:12px;padding:12px;box-shadow:var(--shadow);cursor:pointer;transition:transform .12s}
+.rmini:active{transform:scale(.97)}
+.rmini .mn{font-size:13px;font-weight:500}
+.rmini .mc{font-size:11px;color:var(--sub);margin-top:2px}
+/* cook diary */
+.dentry{background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.dentry .dh{display:flex;justify-content:space-between;align-items:flex-start}
+.dentry img{max-width:100%;border-radius:10px;margin-top:8px;display:block}
+/* quiz */
+.qbox{background:#fbfaf7;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:11px}
+.qbox .qh{font-size:11px;color:var(--sub);margin-bottom:5px}
+.qbox .qt{font-size:14.5px;margin-bottom:9px;font-weight:500}
+.opts label{display:block;padding:10px 12px;border:1px solid var(--line);border-radius:11px;margin-bottom:6px;cursor:pointer;font-size:13.5px;transition:.12s}
+.opts label:active{background:#f7f0e8}
+.opts label.sel{background:#eef4ec;border-color:var(--green)}
+.opts label.cor{background:#e6f1e4;border-color:var(--green)}
+.opts label.wrg{background:#fbeae4;border-color:#cf6a4a}
+.opts input{display:none}
+.expl{display:none;background:#fff;border-left:3px solid var(--green);padding:9px 11px;border-radius:0 9px 9px 0;margin-top:7px;font-size:12.5px;line-height:1.6}
+.expl.show{display:block;animation:viewIn .25s}
+.prog{height:7px;background:#efe9df;border-radius:5px;overflow:hidden;margin-bottom:12px}
+.prog>i{display:block;height:100%;background:var(--green);transition:.4s;border-radius:5px}
+.hidden{display:none}
+.center{text-align:center}
+.small{font-size:12px;color:var(--sub)}
+.divider{height:1px;background:var(--line);margin:12px 0}
+/* calendar */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:11px}
+.cal .h{color:var(--sub);font-weight:600;padding:3px 0}
+.cal .d{padding:7px 0;border-radius:9px;color:var(--sub)}
+.cal .d.today{background:var(--green);color:#fff;font-weight:700}
+.cal .d.per{background:#f6dde4;color:#c47a92;font-weight:600}
+.cal .d.pre{background:#e6f1e4;color:#5e8a5a}
+/* chart */
+.cbar{display:flex;align-items:flex-end;gap:5px;height:90px;padding:6px 0}
+.cbar .b{flex:1;background:linear-gradient(var(--green),#a3c09e);border-radius:5px 5px 0 0;min-height:3px;position:relative}
+.cbar .b span{position:absolute;bottom:-16px;left:0;right:0;font-size:9px;color:var(--sub);text-align:center}
+/* tabbar */
+.tabbar{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;display:flex;background:rgba(255,255,255,.88);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid rgba(236,227,216,.7);padding:6px 4px calc(6px + var(--safe-b));z-index:30}
+.tabbar button{flex:1;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 0;color:var(--sub);font-size:10px;cursor:pointer;transition:.15s;font-family:inherit}
+.tabbar button .ti{font-size:21px;transition:transform .2s}
+.tabbar button.on{color:var(--green)}
+.tabbar button.on .ti{transform:translateY(-2px) scale(1.12)}
+/* modal */
+.mask{position:fixed;inset:0;background:rgba(60,50,40,.35);z-index:40;display:none;align-items:flex-end;justify-content:center}
+.mask.show{display:flex;animation:viewIn .2s}
+.sheet{background:#fff;width:100%;max-width:480px;border-radius:22px 22px 0 0;padding:18px 18px calc(18px + var(--safe-b));animation:sheetUp .3s ease}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+.sheet h3{font-size:16px;margin-bottom:14px;text-align:center}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="head">
+    <h1 id="headTitle">存钱计划</h1>
+    <div class="sub" id="headSub">幸运，今天也顺顺当当 😎</div>
+  </div>
+
+  <div class="views">
+  <div class="ptr" id="ptr">
+    <div class="ind"><div class="sp"></div><span id="ptrTxt">下拉刷新</span></div>
+
+    <!-- ===== 存钱 ===== -->
+    <section class="view active" id="v-save">
+      <div class="stats">
+        <div class="stat"><div class="n" id="sBudget">--</div><div class="l">月预算(元)</div></div>
+        <div class="stat g"><div class="n" id="sLeft">--</div><div class="l">本月剩余</div></div>
+        <div class="stat b"><div class="n" id="sSpent">--</div><div class="l">本月已花</div></div>
+        <div class="stat o"><div class="n" id="sToday">--</div><div class="l">今日花费</div></div>
+      </div>
+      <div class="cheer" id="sCheer"></div>
+
+      <div class="card">
+        <h2><span class="ic">📋</span>记一笔</h2>
+        <div class="row">
+          <div class="fld" style="flex:1 1 84px;margin-bottom:8px"><input id="sAmt" type="number" inputmode="decimal" placeholder="金额"></div>
+          <div class="fld" style="flex:1 1 104px;margin-bottom:8px"><select id="sCat">
+            <option>餐饮</option><option>交通</option><option>购物</option><option>居家</option><option>娱乐</option><option>医疗</option><option>其他</option>
+          </select></div>
+          <div class="fld" style="flex:2 1 150px;margin-bottom:8px"><input id="sNote" type="text" placeholder="备注（如 午饭18）"></div>
+        </div>
+        <button class="btn full" onclick="Save.add()">＋ 添加这笔花销</button>
+        <div id="sTodo" style="margin-top:14px"></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="ic">🥧</span>本月分类占比</h2>
+        <div id="sCats"></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="ic">📈</span>近7天趋势</h2>
+        <div class="cbar" id="sChart"></div>
+        <div class="divider"></div>
+        <div class="small" id="sAuto"></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="ic">⚙️</span>预算设置</h2>
+        <div class="row">
+          <div class="fld" style="flex:1"><input id="sBudgetIn" type="number" inputmode="numeric" placeholder="每月预算金额"></div>
+          <button class="btn ghost" onclick="Save.setBudget()">保存</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="ic">🔄</span>在线更新（高级）</h2>
+        <p class="small" style="margin-bottom:10px">把工作台发布到可公开访问的网址后，填到这里，APP 每次启动会自动拉取最新版。留空则使用<b>内置版本（离线可用，推荐）</b>。</p>
+        <div class="row">
+          <div class="fld" style="flex:1"><input id="sRemote" type="url" placeholder="https://你的地址"></div>
+          <button class="btn ghost" onclick="Save.setRemote()">保存</button>
+          <button class="btn ghost" onclick="Save.resetRemote()">恢复内置版</button>
+        </div>
+        <div class="small" id="sRemoteTip" style="margin-top:8px"></div>
+      </div>
+    </section>
+
+    <!-- ===== 健康 ===== -->
+    <section class="view" id="v-health">
+      <div class="seg" id="hSeg">
+        <button class="on" data-h="sport">运动计划</button>
+        <button data-h="weight">体重</button>
+        <button data-h="aunt">姨妈</button>
+      </div>
+
+      <div id="h-sport">
+        <div class="stats">
+          <div class="stat g"><div class="n" id="hTodayMin">0</div><div class="l">今日(分)</div></div>
+          <div class="stat"><div class="n" id="hStreak">0</div><div class="l">连续打卡</div></div>
+          <div class="stat b"><div class="n" id="hWeekMin">0</div><div class="l">本周(分)</div></div>
+        </div>
+        <div class="cheer" id="hCheer"></div>
+        <div class="card center">
+          <div id="hRing" style="width:128px;height:128px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:4px auto;background:conic-gradient(var(--green) 0deg,#eef0f3 0)"><div style="width:92px;height:92px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center"><div id="hRingNum" style="font-size:20px;font-weight:700">0/30</div><div class="small">今日目标</div></div></div>
+          <div class="row" style="justify-content:center;align-items:center;margin-top:6px;gap:6px">
+            <span class="small">目标</span>
+            <div class="fld" style="flex:0 0 62px;margin:0"><input id="hGoal" type="number" inputmode="numeric" value="30" style="padding:6px 6px;text-align:center" onchange="Health.setGoal()"></div>
+            <span class="small">分钟</span>
+          </div>
+        </div>
+        <div class="card">
+          <h2><span class="ic">✅</span>今日运动清单</h2>
+          <div id="hTodo"></div>
+          <div class="row" style="margin-top:10px">
+            <div class="fld" style="flex:2"><input id="hPlan" type="text" placeholder="运动项目（如 跑步）"></div>
+            <div class="fld" style="flex:1"><input id="hMin" type="number" inputmode="numeric" placeholder="分钟"></div>
+            <button class="btn sm" onclick="Health.addPlan()">添加</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2><span class="ic">🏃</span>今日打卡记录</h2>
+          <div id="hDoneList"></div>
+        </div>
+      </div>
+
+      <div id="h-weight" class="hidden">
+        <div class="stats">
+          <div class="stat"><div class="n" id="hWeight">--</div><div class="l">最新体重(kg)</div></div>
+          <div class="stat b"><div class="n" id="hBmi">--</div><div class="l">BMI</div></div>
+        </div>
+        <div class="card">
+          <h2><span class="ic">⚖️</span>记录体重</h2>
+          <div class="row">
+            <div class="fld" style="flex:1"><input id="hW" type="number" step="0.1" inputmode="decimal" placeholder="体重kg"></div>
+            <div class="fld" style="flex:1"><input id="hH" type="number" step="0.1" inputmode="numeric" placeholder="身高cm(首次)"></div>
+            <button class="btn sm" onclick="Health.addW()">记录</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2><span class="ic">📉</span>体重趋势</h2>
+          <div class="cbar" id="hChart"></div>
+          <div class="divider"></div>
+          <div id="hWList"></div>
+        </div>
+      </div>
+
+      <div id="h-aunt" class="hidden">
+        <div class="stats">
+          <div class="stat p"><div class="n" id="aLast">--</div><div class="l">上次开始</div></div>
+          <div class="stat"><div class="n" id="aCycle">--</div><div class="l">平均周期</div></div>
+          <div class="stat g"><div class="n" id="aNext">--</div><div class="l">预计下次</div></div>
+          <div class="stat b"><div class="n" id="aDays">--</div><div class="l">平均经期</div></div>
+        </div>
+        <div class="cheer" id="aCheer"></div>
+        <div class="card">
+          <h2><span class="ic">🌸</span>记录这次</h2>
+          <div class="row">
+            <div class="fld" style="flex:1"><label>开始</label><input id="aS" type="date"></div>
+            <div class="fld" style="flex:1"><label>结束(可选)</label><input id="aE" type="date"></div>
+          </div>
+          <button class="btn full" style="background:var(--pink)" onclick="Aunt.add()">记录</button>
+        </div>
+        <div class="card">
+          <h2><span class="ic">📅</span>本月日历</h2>
+          <div class="cal" id="aCal"></div>
+          <div style="margin-top:12px"><span class="tag">经期</span><span class="tag ok">预测</span><span class="tag" style="background:var(--green);color:#fff">今天</span></div>
+          <div class="divider"></div>
+          <div id="aList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 学习 ===== -->
+    <section class="view" id="v-study">
+      <div class="stats">
+        <div class="stat"><div class="n" id="lDate" style="font-size:16px">--</div><div class="l">今日科目</div></div>
+        <div class="stat g"><div class="n" id="lDone">--</div><div class="l">已完成</div></div>
+        <div class="stat b"><div class="n" id="lScore">--</div><div class="l">正确率</div></div>
+        <div class="stat o"><div class="n" id="lWrong">--</div><div class="l">累计错点</div></div>
+      </div>
+      <div id="lStart">
+        <div class="card center">
+          <div style="font-size:40px">⚖️</div>
+          <p class="small" style="margin:8px 0" id="lSubjTip">按8天轮换科目出历年真题，答完出解析、自动记错点</p>
+          <button class="btn" onclick="Law.start()">开始今日练习</button>
+          <button class="btn ghost sm" onclick="Law.review()" style="margin-left:8px">错点本</button>
+        </div>
+      </div>
+      <div id="lQuiz" class="hidden">
+        <div class="card">
+          <div class="prog"><i id="lProg"></i></div>
+          <div id="lQs"></div>
+          <div class="center" style="margin:12px 0">
+            <button class="btn" id="lSub" onclick="Law.submit()">提交并查看解析</button>
+            <span class="small" id="lTip" style="margin-left:8px"></span>
+          </div>
+        </div>
+      </div>
+      <div id="lResult" class="hidden"></div>
+    </section>
+
+    <!-- ===== 厨房 ===== -->
+    <section class="view" id="v-cook">
+      <div class="card">
+        <h2><span class="ic">📖</span>家常菜谱 <span class="small" id="cCount"></span></h2>
+        <div class="rsearch"><input id="cSearch" type="search" placeholder="搜菜名或食材…"></div>
+        <div class="rpick">
+          <select id="cCat" onchange="Cook.renderGrid()"></select>
+          <button class="btn ghost sm" onclick="Cook.lucky()">随机一个</button>
+        </div>
+        <div class="rgrid" id="cGrid"></div>
+      </div>
+      <div id="cDetail" class="hidden"></div>
+      <div class="card">
+        <h2><span class="ic">🍳</span>我的做菜日记</h2>
+        <button class="btn full" onclick="Cook.openAdd()">＋ 记录一道菜</button>
+        <div id="cList" style="margin-top:12px"></div>
+      </div>
+    </section>
+
+  </div><!-- /ptr -->
+  </div><!-- /views -->
+
+  <!-- tabbar -->
+  <nav class="tabbar" id="tabbar">
+    <button class="on" data-v="save"><span class="ti">💰</span>存钱</button>
+    <button data-v="health"><span class="ti">🏃</span>健康</button>
+    <button data-v="study"><span class="ti">⚖️</span>学习</button>
+    <button data-v="cook"><span class="ti">🍳</span>厨房</button>
+  </nav>
+</div>
+
+<!-- 添加菜谱日记的底部弹层 -->
+<div class="mask" id="cMask">
+  <div class="sheet">
+    <h3>记录这道菜</h3>
+    <div class="fld"><label>日期</label><input id="cDate" type="date"></div>
+    <div class="fld"><label>菜名</label><input id="cDish" type="text" placeholder="做了啥"></div>
+    <div class="fld"><label>心得</label><textarea id="cNote" rows="2" placeholder="味道/翻车/心得…"></textarea></div>
+    <div class="fld"><label>晒图（可选，自动压缩）</label><input type="file" id="cImg" accept="image/*"></div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn ghost" style="flex:1" onclick="Cook.closeAdd()">取消</button>
+      <button class="btn" style="flex:1" onclick="Cook.add()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ 工具 ============ */
+const DB={get(k,d){try{return JSON.parse(localStorage.getItem('wk2_'+k))??d}catch(e){return d}},set(k,v){localStorage.setItem('wk2_'+k,JSON.stringify(v))}};
+const fmtDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const ym=d=>fmtDate(d).slice(0,7);
+const today=()=>fmtDate(new Date());
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+const fmt=d=>{if(!d)return'--';const x=new Date(d);return(x.getMonth()+1)+'/'+x.getDate()};
+const days=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
+const TITLES={save:'存钱计划',health:'健康与运动',study:'法考学习',cook:'厨房日记'};
+
+/* ============ 导航 ============ */
+function go(v){
+  $$('.view').forEach(x=>x.classList.remove('active'));
+  $('#v-'+v).classList.add('active');
+  $$('#tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  $('#headTitle').textContent=TITLES[v];
+  if(v==='health')Health.render();
+  if(v==='cook')Cook.render();
+  if(v==='study')Law.stat();
+  if(v==='save')Save.render();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+$$('#tabbar button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+
+/* 健康子tab */
+$$('#hSeg button').forEach(b=>b.onclick=()=>{
+  $$('#hSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  const h=b.dataset.h;
+  $('#h-sport').classList.toggle('hidden',h!=='sport');
+  $('#h-weight').classList.toggle('hidden',h!=='weight');
+  $('#h-aunt').classList.toggle('hidden',h!=='aunt');
+  if(h==='weight')Health.renderW();if(h==='aunt')Aunt.render();
+});
+
+/* ============ 下拉刷新 ============ */
+const PTR={startY:0,pulling:false,refreshing:false};
+const ptrEl=$('#ptr');
+ptrEl.addEventListener('touchstart',e=>{if(window.scrollY<=0){PTR.startY=e.touches[0].clientY;PTR.pulling=true}else PTR.pulling=false},{passive:true});
+ptrEl.addEventListener('touchmove',e=>{
+  if(!PTR.pulling||PTR.refreshing)return;
+  const dy=e.touches[0].clientY-PTR.startY;
+  if(dy>0&&window.scrollY<=0){
+    const d=Math.min(dy*0.5,70);
+    ptrEl.style.transition='none';
+    ptrEl.querySelector('.ind').style.top=(-44+d)+'px';
+    $('#ptrTxt').textContent=d>50?'松开刷新':'下拉刷新';
+  }
+},{passive:true});
+ptrEl.addEventListener('touchend',()=>{
+  if(!PTR.pulling)return;PTR.pulling=false;
+  const ind=ptrEl.querySelector('.ind');
+  ind.style.transition='top .25s';
+  if(parseFloat(ind.style.top)>-20){
+    PTR.refreshing=true;ptrEl.classList.add('refreshing');
+    ind.style.top='0px';$('#ptrTxt').textContent='刷新中';
+    setTimeout(()=>{
+      const v=$$('.view.active')[0].id.slice(2);
+      if(v==='save')Save.render();if(v==='health')Health.render();if(v==='cook')Cook.render();if(v==='study')Law.stat();
+      ptrEl.classList.remove('refreshing');ind.style.top='-44px';$('#ptrTxt').textContent='下拉刷新';
+      PTR.refreshing=false;
+    },800);
+  }else{ind.style.top='-44px'}
+});
+
+/* ============ 存钱 ============ */
+const Save={d:DB.get('save',{budget:0,items:[]}),save(){DB.set('save',this.d);this.render()},
+  setBudget(){const v=+$('#sBudgetIn').value;if(v>0){this.d.budget=v;this.save()}},
+  setRemote(){const u=$('#sRemote').value.trim();
+    if(typeof Android!=='undefined'&&Android.applyRemote){Android.applyRemote(u);
+      $('#sRemoteTip').innerHTML=u?('已设为在线更新：<b>'+u+'</b><br>已即时生效，之后每次启动自动拉取最新版。'):'已清除，改用内置版本（离线可用）。';
+    }else{DB.set('remote',u);$('#sRemoteTip').innerHTML='当前在浏览器中打开，设置不会写入APP；请在手机APP内打开此页设置。';}},
+  resetRemote(){if(typeof Android!=='undefined'&&Android.applyRemote){Android.applyRemote('');$('#sRemote').value='';$('#sRemoteTip').innerHTML='已恢复<b>内置版本（离线可用）</b>，不再拉取远程，重启APP即生效。';}
+    else{$('#sRemoteTip').innerHTML='请在手机APP内操作。';}},
+  add(){const a=+$('#sAmt').value,n=$('#sNote').value.trim(),c=$('#sCat').value;if(!a)return;
+    this.d.items.push({id:Date.now(),date:today(),amt:a,note:n,cat:c});$('#sAmt').value='';$('#sNote').value='';this.save()},
+  del(id){const el=event&&event.target?event.target.closest('.todo'):null;if(el){el.classList.add('removing');setTimeout(()=>{this.d.items=this.d.items.filter(x=>x.id!==id);this.save()},250)}else{this.d.items=this.d.items.filter(x=>x.id!==id);this.save()}},
+  render(){
+    const curRemote=(typeof Android!=='undefined'&&Android.getRemoteUrl)?Android.getRemoteUrl():DB.get('remote','');
+    if($('#sRemote'))$('#sRemote').value=curRemote;
+    const ymNow=ym(new Date());
+    const month=this.d.items.filter(r=>r.date.slice(0,7)===ymNow);
+    const spent=month.reduce((s,r)=>s+r.amt,0);            // 花出去就计入，立等可现
+    const left=this.d.budget-spent;
+    const td=this.d.items.filter(r=>r.date===today()).reduce((s,r)=>s+r.amt,0);
+    $('#sBudget').textContent=this.d.budget||'未设';
+    $('#sSpent').textContent='¥'+spent.toFixed(0);
+    $('#sLeft').textContent=left>=0?'¥'+left.toFixed(0):'超¥'+(-left).toFixed(0);
+    $('#sToday').textContent='¥'+td.toFixed(0);
+    let c='';
+    if(!this.d.budget)c='<b>先设个月预算</b>，有目标存钱才有的放矢～';
+    else if(left<0)c='本月超支啦，<b>别焦虑</b>，接下来克制一下就回来。你能行的！';
+    else if(td===0)c='今天还没花钱，<b>棒！</b>省下的每一块都在攒底气😎';
+    else if(left>this.d.budget*0.5)c='花销控制不错，剩余充裕，<b>稳住节奏</b>～';
+    else c='预算用到一半多了，精打细算，<b>每省一笔都是赚到</b>💪';
+    $('#sCheer').innerHTML=c;
+    // 今日清单（含分类标签，点 × 删除）
+    const tl=$('#sTodo');tl.innerHTML='';
+    const todayItems=this.d.items.filter(r=>r.date===today()).reverse();
+    if(!todayItems.length)tl.innerHTML='<div class="small" style="padding:8px 0">今天还没记账，加一笔吧～</div>';
+    todayItems.forEach(r=>{
+      tl.insertAdjacentHTML('beforeend',`<div class="todo">
+        <div class="txt">${r.note||'未备注'} <span class="tag">${r.cat}</span> <span class="small">¥${r.amt}</span></div>
+        <div class="del" onclick="Save.del(${r.id})">×</div></div>`);
+    });
+    // 分类占比
+    const cats={};month.forEach(r=>{cats[r.cat]=(cats[r.cat]||0)+r.amt});
+    const cc=$('#sCats');cc.innerHTML='';
+    const entries=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+    if(!entries.length)cc.innerHTML='<div class="small">本月还没有花销记录</div>';
+    const maxc=Math.max(...entries.map(e=>e[1]),1);
+    entries.forEach(([k,v])=>{const p=spent?Math.round(v/spent*100):0;
+      cc.insertAdjacentHTML('beforeend',`<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>${k}</span><span class="small">¥${v.toFixed(0)} · ${p}%</span></div><div style="height:8px;background:#efe9df;border-radius:5px;overflow:hidden"><div style="height:100%;width:${Math.max(4,v/maxc*100)}%;background:linear-gradient(90deg,var(--green),#a3c09e)"></div></div></div>`)});
+    // 自动测算：本月日均 & 预计月末结余
+    const now=new Date(),dayNow=now.getDate(),daysInM=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+    const avg=dayNow?spent/dayNow:0;const proj=this.d.budget?this.d.budget-avg*daysInM:0;
+    $('#sAuto').innerHTML=this.d.budget?`本月日均 <b style="color:var(--green-d)">¥${avg.toFixed(0)}</b> · 按此节奏预计月末结余 <b style="color:var(--green-d)">¥${proj.toFixed(0)}</b>`:'设了预算后，这里会自动帮你算月末结余～';
+    // 近7天趋势
+    const ch=$('#sChart');ch.innerHTML='';
+    for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const ds=fmtDate(d);
+      const sum=this.d.items.filter(r=>r.date===ds).reduce((s,r)=>s+r.amt,0);
+      const mx=Math.max(this.d.budget/30||200,td||100);
+      const b=document.createElement('div');b.className='b';b.style.height=Math.max(3,sum/mx*80)+'px';
+      if(sum===0)b.style.opacity=.25;b.innerHTML='<span>'+(d.getMonth()+1)+'/'+d.getDate()+'</span>';ch.appendChild(b)}
+  }
+};
+
+/* ============ 健康 ============ */
+const Health={d:DB.get('health',{height:0,weights:[],goal:30,plans:[],dones:[]}),save(){DB.set('health',this.d)},
+  setGoal(){const g=+$('#hGoal').value;if(g>0)this.d.goal=g;this.save()},
+  addPlan(){const v=$('#hPlan').value.trim(),min=+$('#hMin').value;if(!v||!min)return;
+    this.d.plans.push({id:Date.now(),date:today(),txt:v,min,done:false});$('#hPlan').value='';$('#hMin').value='';this.render()},
+  toggleP(id){const p=this.d.plans.find(x=>x.id===id);if(!p)return;
+    if(!p.done){p.done=true;this.d.dones.push({id:Date.now(),date:today(),type:p.txt,min:p.min,pid:p.id})}
+    else{const i=this.d.dones.findIndex(x=>x.pid===p.id);if(i>=0)this.d.dones.splice(i,1);p.done=false}
+    this.save();this.render()},
+  delP(id){this.d.plans=this.d.plans.filter(x=>x.id!==id);
+    this.d.dones=this.d.dones.filter(x=>x.pid!==id);this.save();this.render()},
+  delD(id){const dd=this.d.dones.find(x=>x.id===id);if(dd&&dd.pid){const p=this.d.plans.find(x=>x.id===dd.pid);if(p)p.done=false}
+    this.d.dones=this.d.dones.filter(x=>x.id!==id);this.save();this.render()},
+  addW(){const w=+$('#hW').value,h=+$('#hH').value;if(!w)return;if(h)this.d.height=h;this.d.weights.push({date:today(),w});$('#hW').value='';this.save();this.renderW()},
+  render(){
+    const goal=this.d.goal||30;
+    const todayDones=this.d.dones.filter(s=>s.date===today());
+    const todayMin=todayDones.reduce((a,b)=>a+b.min,0);
+    $('#hTodayMin').textContent=todayMin;
+    const pct=Math.min(100,Math.round(todayMin/goal*100));
+    $('#hRing').style.background=`conic-gradient(var(--green) ${pct*3.6}deg,#eef0f3 0)`;
+    $('#hRingNum').textContent=todayMin+'/'+goal;
+    if(+$('#hGoal').value!==goal)$('#hGoal').value=goal;
+    // 连续打卡（从今天往前数连续有记录的天数）
+    const dates=[...new Set(this.d.dones.map(s=>s.date))].sort().reverse();
+    let streak=0;let cur=new Date();
+    for(let i=0;i<400;i++){const ds=fmtDate(cur);if(dates.includes(ds)){streak++;cur.setDate(cur.getDate()+1)}else break}
+    $('#hStreak').textContent=streak;
+    // 本周
+    const wk=[];for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()-i);wk.push(fmtDate(d))}
+    $('#hWeekMin').textContent=this.d.dones.filter(s=>wk.includes(s.date)).reduce((a,b)=>a+b.min,0);
+    // 鼓励
+    let c='';
+    if(todayMin>=goal)c=`今日目标已达成 ${todayMin} 分钟，<b>漂亮！</b>💪`;
+    else if(streak>=7)c=`连续打卡 ${streak} 天，<b>这自律我服！</b>`;
+    else if(streak>=3)c=`连续 ${streak} 天，<b>势头不错</b>，今天也动一动？`;
+    else if(todayMin>0)c=`今天已经 ${todayMin} 分钟，再坚持一下就达标～`;
+    else c='动起来就比躺着强，<b>别等明天</b>，哪怕快走15分钟都算数！';
+    $('#hCheer').innerHTML=c;
+    // 今日运动清单（完成即打卡，计划与记录联动）
+    const tl=$('#hTodo');tl.innerHTML='';
+    const tp=this.d.plans.filter(p=>p.date===today());
+    if(!tp.length)tl.innerHTML='<div class="small" style="padding:8px 0">今天还没排运动，加一项并点"完成"试试～</div>';
+    tp.forEach(p=>{tl.insertAdjacentHTML('beforeend',`<div class="todo ${p.done?'done':''}"><div class="txt" style="flex:1">${p.txt} <span class="small">${p.min}分钟</span></div><button class="btn sm ${p.done?'ghost':''}" onclick="Health.toggleP(${p.id})">${p.done?'已完成':'完成'}</button><div class="del" onclick="Health.delP(${p.id})">×</div></div>`)});
+    // 打卡记录
+    const dl=$('#hDoneList');dl.innerHTML='';
+    const ds=[...this.d.dones].reverse().slice(0,15);
+    if(!ds.length)dl.innerHTML='<div class="small">今天还没打卡，完成上面的清单就开始吧💪</div>';
+    ds.forEach(s=>{dl.insertAdjacentHTML('beforeend',`<div class="li"><div><div class="lt">${s.type} · ${s.min}分钟</div><div class="ls">${fmt(s.date)}</div></div><div class="ld" onclick="Health.delD(${s.id})">删</div></div>`)});
+  },
+  renderW(){
+    const w=this.d.weights,lastW=w.length?w[w.length-1].w:0,h=this.d.height;
+    $('#hWeight').textContent=lastW||'--';
+    $('#hBmi').textContent=(lastW&&h)?(lastW/Math.pow(h/100,2)).toFixed(1):'--';
+    const ch=$('#hChart');ch.innerHTML='';
+    const r=w.slice(-7);
+    if(r.length){const mx=Math.max(...r.map(x=>x.w)),mn=Math.min(...r.map(x=>x.w)),rg=mx-mn||1;
+      r.forEach(x=>{const b=document.createElement('div');b.className='b';b.style.height=(30+(x.w-mn)/rg*55)+'px';b.innerHTML='<span>'+x.w+'</span>';ch.appendChild(b)})}
+    else ch.innerHTML='<div class="small" style="width:100%;text-align:center">记几次体重就能看到趋势</div>';
+    const wl=$('#hWList');wl.innerHTML='';
+    [...w].reverse().slice(0,10).forEach(x=>wl.insertAdjacentHTML('beforeend',`<div class="li"><div class="lt">${x.w} kg</div><div class="ls">${fmt(x.date)}</div></div>`));
+  }
+};
+
+/* ============ 姨妈 ============ */
+const Aunt={d:DB.get('aunt',[]),save(){DB.set('aunt',this.d);this.render()},
+  add(){const s=$('#aS').value,e=$('#aE').value;if(!s)return;if(e&&e<s)return;
+    this.d.push({start:s,end:e||null});this.d.sort((a,b)=>a.start<b.start?-1:1);$('#aS').value='';$('#aE').value='';this.save()},
+  del(i){this.d.splice(i,1);this.save()},
+  render(){
+    const d=this.d;
+    $('#aLast').textContent=d.length?fmt(d[d.length-1].start):'--';
+    let cycs=[],dys=[];for(let i=1;i<d.length;i++)cycs.push(days(d[i-1].start,d[i].start));
+    d.forEach(x=>{if(x.end)dys.push(days(x.start,x.end)+1)});
+    const ac=cycs.length?Math.round(cycs.reduce((a,b)=>a+b)/cycs.length):0;
+    const ad=dys.length?Math.round(dys.reduce((a,b)=>a+b)/dys.length):0;
+    $('#aCycle').textContent=ac||'--';$('#aDays').textContent=ad||'--';
+    let next='--',cheer='多记录几次，周期会越来越准～';
+    if(d.length){const last=new Date(d[d.length-1].start);const cyc=ac||28;const nx=new Date(last.getTime()+cyc*864e5);
+      next=fmt(nx.toISOString().slice(0,10));const diff=days(today(),nx.toISOString().slice(0,10));
+      if(diff<0)cheer='<b>预计已推迟</b>，别紧张，压力作息都会影响，超一周留意身体🌸';
+      else if(diff<=3)cheer=`预计<b>${diff}天后</b>，提前备好用品，少凉的、多休息～`;
+      else if(diff<=7)cheer=`大概<b>${diff}天后</b>，不急，照顾好自己～`;
+      else cheer=`周期还算规律，预计<b>${diff}天后</b>，保持好作息🌸`}
+    $('#aNext').textContent=next;$('#aCheer').innerHTML=cheer;
+    this.cal();
+    const al=$('#aList');al.innerHTML='';
+    if(!d.length){al.innerHTML='<div class="small">还没记录</div>';return}
+    [...d].reverse().forEach((r,i)=>{const ri=d.length-1-i;let c='',dy=r.end?days(r.start,r.end)+1:'';
+      if(ri>0)c=days(d[ri-1].start,r.start);
+      al.insertAdjacentHTML('beforeend',`<div class="li"><div><div class="lt">${fmt(r.start)} → ${r.end?fmt(r.end):'进行中'}</div><div class="ls">周期${c||'—'}天 · 经期${dy||'—'}天</div></div><div class="ld" onclick="Aunt.del(${ri})">删</div></div>`)});
+  },
+  cal(){const cal=$('#aCal');cal.innerHTML='';
+    const now=new Date(),y=now.getFullYear(),m=now.getMonth();
+    ['日','一','二','三','四','五','六'].forEach(w=>cal.insertAdjacentHTML('beforeend',`<div class="h">${w}</div>`));
+    const first=new Date(y,m,1).getDay();for(let i=0;i<first;i++)cal.insertAdjacentHTML('beforeend','<div></div>');
+    const dim=new Date(y,m+1,0).getDate();let predict=[];
+    if(this.d.length){const last=new Date(this.d[this.d.length-1].start);let cs=[];for(let i=1;i<this.d.length;i++)cs.push(days(this.d[i-1].start,this.d[i].start));const cyc=cs.length?Math.round(cs.reduce((a,b)=>a+b)/cs.length):28;const nx=new Date(last.getTime()+cyc*864e5);if(nx.getMonth()===m&&nx.getFullYear()===y)predict.push(nx.getDate())}
+    const pd=new Set();this.d.forEach(r=>{const s=new Date(r.start),e=r.end?new Date(r.end):new Date(r.start.getTime()+4*864e5);for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1))if(d.getMonth()===m&&d.getFullYear()===y)pd.add(d.getDate())});
+    for(let d=1;d<=dim;d++){let cls='d';if(d===now.getDate())cls+=' today';else if(pd.has(d))cls+=' per';else if(predict.includes(d))cls+=' pre';cal.insertAdjacentHTML('beforeend',`<div class="${cls}">${d}</div>`)}
+  }
+};
+
+/* ============ 法考题库 ============ */
+/* ============ 法考真题库（按8天轮换科目，历年真题精选） ============ */
+/* SUBJECTS 索引即 (月+日) mod 8 的余数：0理论法 1刑法 2民法 3行政法 4民诉 5刑诉 6商经 7三国 */
+const SUBJECTS=['理论法','刑法','民法','行政法','民事诉讼法','刑事诉讼法','商经法','三国法'];
+const LAWDB={
+'刑法':{c:[
+ {q:'关于因果关系，下列哪一选项是正确的？',o:['甲开枪打乙，乙在送医院途中遭遇车祸死亡，甲的行为与乙的死亡有因果关系','甲投毒杀乙，乙服药后被他人推下高楼摔死，甲的行为与乙的死亡有因果关系','甲殴打乙致轻伤，乙因特殊体质死亡，甲的行为与乙的死亡有因果关系','甲与乙互殴，乙不慎摔倒死亡，甲的行为与乙的死亡有因果关系'],a:2,e:'介入因素是否中断因果关系，看介入因素是否异常。特殊体质不中断因果关系，甲殴打与乙死亡有因果关系（但仅负故意伤害责任，不负责死亡结果）。车祸、他人推下高楼属异常介入，中断因果关系。',src:'2019年法考真题'},
+ {q:'甲持刀抢劫乙，乙奋力反抗夺刀，将甲刺成重伤。乙的行为属于？',o:['防卫过当','正当防卫','故意伤害','紧急避险'],a:1,e:'对正在进行的行凶、杀人、抢劫等严重危及人身安全的暴力犯罪，采取防卫行为造成不法侵害人伤亡的，不属于防卫过当，不负刑事责任（特殊防卫权）。乙面对抢劫反抗致甲重伤，属正当防卫。',src:'2020年法考真题'},
+ {q:'甲欲杀乙，投毒后见乙痛苦挣扎，心生悔意，将乙送医抢救，乙脱险。甲的行为构成？',o:['犯罪未遂','犯罪中止','犯罪既遂','犯罪预备'],a:1,e:'在犯罪过程中，自动放弃犯罪或者自动有效地防止犯罪结果发生的，是犯罪中止。甲自动投毒后自动送医有效防止死亡结果，构成故意杀人罪中止。',src:'2018年法考真题'},
+ {q:'甲教唆乙盗窃，乙在盗窃中被主人发现，为抗拒抓捕当场使用暴力。对甲、乙的行为认定正确的是？',o:['甲乙均构成盗窃罪','甲构成盗窃罪，乙构成抢劫罪','甲乙均构成抢劫罪','甲构成抢劫罪，乙构成盗窃罪'],a:1,e:'乙盗窃中为抗拒抓捕当场使用暴力，转化为抢劫罪。甲仅教唆盗窃，对乙的过限行为（暴力）不负责，甲仍定盗窃罪，乙定抢劫罪。',src:'2021年法考真题'},
+ {q:'甲被公安机关抓获后，如实供述了司法机关尚未掌握的本人受贿罪行。甲的行为属于？',o:['坦白','自首','立功','一般自首'],a:1,e:'被采取强制措施的犯罪嫌疑人，如实供述司法机关尚未掌握的本人其他罪行的，以自首论（特别自首/余罪自首）。',src:'2019年法考真题'}
+],s:[
+ {q:'甲、乙共谋抢劫，约定甲望风、乙入室。乙入室后为灭口将被害人杀死，甲在门外不知情。问：甲、乙的行为如何认定？',a:'乙构成抢劫罪（致人死亡）。乙入室抢劫并杀人，属抢劫致人死亡的结果加重犯。甲构成抢劫罪（基本犯）。甲乙共谋抢劫，甲对抢劫有共同故意，但乙杀人属实行过限，甲对死亡结果不负责。甲、乙在抢劫罪（基本犯）范围内成立共同犯罪，甲为从犯（望风起辅助作用），应从轻、减轻或免除处罚；乙单独对致人死亡负责。',src:'历年法考主观题（刑法）'}
+]},
+'民法':{c:[
+ {q:'张三、李四、王五共同购买一辆汽车用于货运经营，后汽车出故障，李四和王五打算整体维修，张三经济紧张不想出钱，想将自己的共有份额转让给曹某。下列哪一选项正确？',o:['李四和王五享有平等的优先购买权','维修汽车需要所有人共同决定','该汽车为三人共同共有','张三向外转让份额需经李四和王五一致同意'],a:0,e:'共同共有仅"夫家遗伙居"五类，三人无此关系，推定为按份共有。按份共有人转让份额自由，无需他人同意，但其他共有人在同等条件下有优先购买权，多人主张按比例行使，故李四王五平等享有。',src:'2023年法考真题（卷二）'},
+ {q:'7月15日，李某与宋某约定在宋某房屋上为李某设立居住权，期限10年，李某付10万元。7月20日李某将房屋租给不知情的丁某。8月15日双方办理居住权登记。下列说法正确的是？',o:['7月15日居住权设立','租赁合同有效','李某在10年内死亡，居住权可以继承','李某支付10万元的行为无效'],a:1,e:'居住权采登记生效主义，8月15日登记才设立。居住权不得出租，李某出租属无权出租，但无权出租不影响合同效力，仅影响履行，故租赁合同有效。居住权不得继承，可有偿设立。',src:'2023年法考真题（卷二）'},
+ {q:'甲将一块玉佩担保给乙并完成交付。几天后乙借给甲10万元，约定三个月后归还及利息，若未付清乙获得该玉佩所有权。届满甲未付款，乙获得何种权利？',o:['该玉佩所有权','就该玉佩的质权','就该玉佩的抵押权','就该玉佩的留置权'],a:1,e:'抵押不移转占有，玉佩已交付非抵押；留置是法定担保物权，本案系约定。交付担保属动产质权。"未付清获得所有权"属流质条款无效，乙不能取得所有权，但因已交付享有动产质权、可优先受偿。',src:'2023年法考真题（卷二）'},
+ {q:'外卖骑手张某见李某跳河，将手机交给路人王某便跳湖救李某，背部不慎划伤；李某不想被救拼命挣脱，张某用力过大致背部伤口撕扯，李某胳膊骨折；王某不小心将张某手机掉落摔碎屏幕。下列说法正确的是？',o:['手机损坏，保管人王某应赔偿损失','张某背部受伤，被救者李某应适当补偿','手机损坏，保管人王某应适当补偿','李某胳膊受伤，张某应赔偿损失'],a:1,e:'无偿保管人仅故意或重大过失才赔偿，王某"不小心"非重大过失，且无公平补偿规定，故无责。张某救人构成无因管理，管理人所受损害可请求受益人适当补偿（B对）；受益人所受损害不得请求管理人赔偿（D错）。',src:'2023年法考真题（卷二）'},
+ {q:'甲、乙之间有车辆租赁协议，到期后甲约定将车卖给乙，价款20万元分3个月付清。丙知道后向甲表示愿以25万元购买且一周内付全款，甲同意并让丙直接找乙提车。下列选项正确的是？（多选）',o:['乙已经取得车辆所有权','丙有权请求乙返还车辆','丙善意取得车辆所有权','甲系无权处分'],a:0,e:'（本题为多选，答案AD）甲乙"先租后买"属简易交付，买卖合同生效时即交付，乙取得所有权（A对）。此后甲卖给丙构成无权处分（D对）。但甲丙未完成交付（非现实非观念交付），丙不能善意取得，也无权请求乙返还（B、C错）。',src:'2023年法考真题（卷二）'}
+],s:[
+ {q:'甲公司（王某设立的一人公司，其妻李某任财务负责人）向乙公司购买200万元设备，首付100万余款分10期付清，王某承诺"若甲公司不能清偿则无条件担保"。后甲公司停付价款，又欠培训费20万。经查王某曾转移甲公司财产装修。乙公司起诉要求甲公司付款赔偿，并要求王某、李某承担连带责任。问：能否支持？',a:'(1)对设备款：能。王某"无条件担保"构成连带责任保证；该债务系婚后为共同生产经营所负，属夫妻共同债务，故王某、李某均担责。(2)对培训费：能。甲公司为一人公司，股东财产与公司财产不独立，王某转移财产构成滥用法人独立地位，应对公司债务承担连带责任（法人人格否认）；该债务系婚后共同生产经营所负，属夫妻共同债务，李某也担责。',src:'2023年法考真题（民法主观题）'}
+]},
+'行政法':{c:[
+ {q:'关于行政许可的设定，下列哪一说法正确？',o:['部门规章可以设定行政许可','法律可以设定各类行政许可','行政许可一律不得转让','行政许可有效期届满自动延续'],a:1,e:'法律可设定各类行政许可；尚未制定法律的，行政法规可设定；尚未制定法律、行政法规的，地方性法规可设定。部门规章无权设定许可。',src:'2020年法考真题'},
+ {q:'下列哪项行政处罚只能由法律设定？',o:['罚款','没收违法所得','行政拘留','责令停产停业'],a:2,e:'限制人身自由的行政处罚（行政拘留）只能由法律设定，并由公安机关实施。其余可由行政法规等设定。',src:'2019年法考真题'},
+ {q:'公民、法人认为具体行政行为侵犯其合法权益，申请行政复议的期限一般是？',o:['知道该行为之日起30日','知道该行为之日起60日','该行为作出之日起60日','该行为作出之日起6个月'],a:1,e:'自知道该具体行政行为之日起60日内提出行政复议申请。直接起诉的起诉期限是知道之日起6个月。',src:'2021年法考真题'},
+ {q:'下列哪项不属于行政诉讼的受案范围？',o:['对行政拘留不服','对罚款不服','行政机关对工作人员的奖惩决定','对不予行政许可不服'],a:2,e:'行政机关对其工作人员的奖惩、任免等内部行政行为，不属于行政诉讼受案范围，也不能申请行政复议。',src:'2018年法考真题'},
+ {q:'行政机关作出下列哪类处罚决定前，应当告知当事人有要求听证的权利？',o:['警告','通报批评','较大数额罚款','责令改正'],a:2,e:'作出责令停产停业、吊销许可证或执照、较大数额罚款等较重处罚决定前，应告知当事人有要求听证的权利。',src:'2020年法考真题'}
+],s:[
+ {q:'某县公安局以张某扰乱公共秩序为由对其作出行政拘留10日的处罚。张某不服，欲寻求救济。问：(1)张某可否直接提起行政诉讼？(2)行政拘留的设定依据是否合法？',a:'(1)可以。行政拘留属于行政诉讼受案范围，张某可先申请行政复议，也可直接向法院提起行政诉讼（行政处罚非复议前置情形）。(2)行政拘留属限制人身自由的行政处罚，只能由法律设定。《治安管理处罚法》是法律，有权设定行政拘留，故设定依据合法。',src:'历年法考主观题（行政法）'}
+]},
+'民事诉讼法':{c:[
+ {q:'关于级别管辖，下列哪一说法正确？',o:['所有案件都由基层法院管辖','重大涉外案件由中级法院管辖','专利纠纷案件由基层法院管辖','级别管辖可以约定改变'],a:1,e:'重大涉外案件、本辖区有重大影响的案件、最高人民法院确定由中级法院管辖的案件由中级法院管辖。级别管辖是法定的，不能约定改变。',src:'2019年法考真题'},
+ {q:'甲公司起诉乙公司支付货款，提供买卖合同原件；乙公司称货款已付，提供银行电子转账凭证。下列说法正确的是？（多选）',o:['甲公司提供的合同是本证','乙公司提供的转账凭证是电子数据','乙公司提供的转账凭证是本证','甲公司应对其与丙公司间的借款关系承担证明责任'],a:0,e:'（本题为多选，答案ABC）承担证明责任一方提供的证据是本证，甲主张买卖关系、乙主张已付款，各自证据均为本证。电子转账凭证是电子数据。甲丙借款关系与本案无关，不是证明对象。',src:'2023年法考真题（民诉）'},
+ {q:'关于财产保全，下列说法正确的是？',o:['诉前保全后30日内不起诉的，解除保全','保全只能针对不动产','保全不需要提供担保','保全裁定可以上诉'],a:0,e:'诉前财产保全，申请人在法院采取保全措施后30日内不依法提起诉讼或申请仲裁的，法院应解除保全。保全可针对动产、不动产、财产性权利；一般需提供担保；保全裁定可申请复议不可上诉。',src:'2020年法考真题'},
+ {q:'债权人请求债务人给付金钱，符合法定条件的，可以向法院申请？',o:['公示催告','支付令','先予执行','强制执行'],a:1,e:'债权人请求债务人给付金钱、有价证券，债权债务关系明确合法的，可向法院申请支付令（督促程序）。',src:'2021年法考真题'},
+ {q:'当事人不服一审判决提起上诉的期限是？',o:['判决书送达之日起10日','判决书送达之日起15日','判决书送达之日起20日','判决书送达之日起30日'],a:1,e:'不服一审民事判决的上诉期为判决书送达之日起15日；不服裁定为10日。',src:'2018年法考真题'}
+],s:[
+ {q:'甲与乙签订房屋买卖合同，约定由合同签订地A区法院管辖。后发生纠纷，甲欲起诉乙。A区法院、被告住所地B区法院、房屋所在地C区法院，哪些法院有管辖权？',a:'C区法院有管辖权。因不动产纠纷提起的诉讼，由不动产所在地法院专属管辖。房屋买卖合同纠纷（涉及房屋权利确认、分割等物权纠纷）属专属管辖，应由房屋所在地C区法院管辖。当事人的协议管辖不得违反专属管辖和级别管辖的规定，故约定A区法院管辖无效，B区法院作为被告住所地法院因专属管辖被排除。',src:'历年法考主观题（民诉）'}
+]},
+'刑事诉讼法':{c:[
+ {q:'关于非法证据排除规则，下列哪项正确？',o:['只有刑讯逼供获取的口供需排除','非法言词证据应当依法排除','非法收集的物证一律排除','辩护人无权申请排除非法证据'],a:1,e:'采用刑讯逼供等非法方法收集的供述和采用暴力、威胁等非法方法收集的证人证言、被害人陈述，应当依法排除。物证收集程序违法、可能严重影响司法公正且不能补正的才排除。',src:'2020年法考真题'},
+ {q:'侦查机关对被拘留的人认为需要逮捕的，一般应在几日内提请批准逮捕？',o:['3日内，特殊情况延长1至4日','7日内','15日内','30日内'],a:0,e:'一般3日内提请批准逮捕，特殊情况延长1至4日；对流窜作案、多次作案、结伙作案的重大嫌疑分子可延长至30日。',src:'2019年法考真题'},
+ {q:'关于取保候审，下列说法正确的是？',o:['取保候审最长不超过6个月','被取保候审人可自由离开所居住的市、县','取保候审期间不得干扰证人作证','取保候审适用于所有犯罪嫌疑人'],a:2,e:'取保候审最长12个月。被取保人未经批准不得离开所居住的市、县，且不得毁灭伪造证据或串供、不得干扰证人作证。并非所有嫌疑人都适用。',src:'2021年法考真题'},
+ {q:'下列哪类案件应当不公开审理？',o:['涉及商业秘密的案件','涉及个人隐私的案件','被告人认罪认罚的案件','附带民事诉讼的案件'],a:1,e:'涉及国家秘密、个人隐私的案件，以及审判时被告人不满18周岁的案件，应当不公开审理。商业秘密案件经申请可以不公开（非法定不公开）。',src:'2018年法考真题'},
+ {q:'关于认罪认罚从宽制度，下列说法正确的是？',o:['认罪认罚必须从宽处罚','认罪认罚的可以依法从宽处理','认罪认罚仅适用于轻罪','签署具结书后不得反悔'],a:1,e:'犯罪嫌疑人、被告人自愿如实供述、承认指控、愿意接受处罚的，可以依法从宽处理（是可以而非应当，从宽包括实体从宽和程序从简）。适用于所有刑事案件。签署具结书后在特定情形下可反悔。',src:'2020年法考真题'}
+],s:[
+ {q:'侦查人员通过刑讯逼供获取了犯罪嫌疑人甲的有罪供述，又根据该供述找到了作案工具（物证）。问：甲的供述和作案工具能否作为定案根据？',a:'甲的供述应当排除。采用刑讯逼供等非法方法收集的犯罪嫌疑人供述，属于非法言词证据，应当依法排除，不得作为定案根据。作案工具（物证）不必然排除。物证、书证的收集不符合法定程序、可能严重影响司法公正的，应当予以补正或作出合理解释；不能补正或不能作出合理解释的，才应当排除。本案物证若能补正或合理解释，仍可作为证据使用（毒树之果在我国不完全适用）。',src:'历年法考主观题（刑诉）'}
+]},
+'商经法':{c:[
+ {q:'关于有限责任公司股东出资，下列哪项正确？',o:['股东可以用劳务出资','股东应按期足额缴纳认缴的出资额','股东不按规定出资只对公司承担责任','股东出资比例必须与持股比例一致'],a:1,e:'股东应按期足额缴纳认缴出资额，否则除向公司足额缴纳外，还应向已按期足额缴纳的股东承担违约责任。劳务不得出资（可用货币、实物、知识产权、土地使用权等可估价可转让的非货币财产）。',src:'2019年法考真题'},
+ {q:'公司股东会作出下列哪类决议，须经代表三分之二以上表决权的股东通过？',o:['选举公司董事','修改公司章程','审议年度财务预算','决定公司利润分配'],a:1,e:'修改公司章程、增加或减少注册资本、公司合并分立解散或变更公司形式的决议，须经代表三分之二以上表决权的股东通过。其余一般过半数。',src:'2020年法考真题'},
+ {q:'关于劳动合同试用期，下列说法正确的是？',o:['试用期不包含在劳动合同期限内','同一用人单位可与同一劳动者约定多次试用期','劳动合同仅约定试用期的，试用期不成立','试用期工资可低于当地最低工资标准'],a:2,e:'试用期包含在劳动合同期限内；同一单位与同一劳动者只能约定一次试用期；仅约定试用期的，试用期不成立，该期限为劳动合同期限。试用期工资不得低于本单位相同岗位最低档工资或合同约定工资的80%，且不得低于当地最低工资标准。',src:'2021年法考真题'},
+ {q:'用人单位进行经济性裁员时，应当优先留用下列哪类人员？',o:['与本单位订立较短期限劳动合同的','与本单位订立无固定期限劳动合同的','家庭无其他就业人员且无需要扶养的老人的','刚入职的新员工'],a:1,e:'经济性裁员应优先留用：与本单位订立较长期限固定期限合同的、订立无固定期限合同的、家庭无其他就业人员且有需要扶养的老人或未成年人的。',src:'2018年法考真题'},
+ {q:'下列哪项属于反垄断法禁止的垄断协议？',o:['为改进技术的研究开发协议','经营者与交易相对人固定向第三人转售商品的价格','为提高产品质量的协议','为保障对外贸易正当利益的协议'],a:1,e:'固定向第三人转售商品的价格、限定向第三人转售商品的最低价格，属于法律禁止的纵向垄断协议。改进技术、提高质量、保障外贸等协议可豁免。',src:'2020年法考真题'}
+],s:[
+ {q:'甲公司股东张某认缴出资100万元，实缴30万元后将甲公司资金80万元转出用于个人购房。债权人乙公司要求张某对公司不能清偿的债务承担责任。问：乙公司的主张能否成立？',a:'能成立。张某转出公司资金用于个人购房，构成抽逃出资（或滥用股东权利损害公司债权人利益）。股东抽逃出资的，公司债权人有权请求抽逃出资的股东在抽逃出资本息范围内对公司债务不能清偿的部分承担补充赔偿责任。若张某行为构成滥用公司法人独立地位和股东有限责任、逃避债务、严重损害债权人利益，还应依公司法人人格否认规则对公司债务承担连带责任。',src:'历年法考主观题（商法）'}
+]},
+'三国法':{c:[
+ {q:'根据《维也纳条约法公约》，条约的保留是指一国在签署、批准或加入条约时所作的、意在排除或更改条约中若干规定对该国适用时法律效果的？',o:['正式声明','单方面声明','修正案','解释性说明'],a:1,e:'保留是一国在签署、批准、接受、赞同或加入条约时所作的单方面声明，不论其措辞或名称，意在排除或更改条约若干规定对该国适用时的法律效果。',src:'2019年法考真题'},
+ {q:'关于国家及其财产豁免，下列说法正确的是？',o:['国家的一切行为都享有管辖豁免','国家从事商业活动时不享有管辖豁免','放弃管辖豁免即视为放弃执行豁免','执行豁免与管辖豁免完全相同'],a:1,e:'限制豁免主义下，国家从事商业（私法）活动时不享有管辖豁免。执行豁免比管辖豁免更严格，放弃管辖豁免不等于放弃执行豁免，执行豁免须单独明示放弃。',src:'2020年法考真题'},
+ {q:'我国《涉外民事关系法律适用法》规定，自然人的民事权利能力适用？',o:['国籍国法律','住所地法律','经常居所地法律','行为地法律'],a:2,e:'自然人的民事权利能力，适用经常居所地法律。我国以经常居所地作为属人法的主要连结点。',src:'2021年法考真题'},
+ {q:'根据《联合国国际货物销售合同公约》(CISG)，下列哪项买卖不适用该公约？',o:['营业地在不同缔约国的当事人间货物买卖','经由拍卖的买卖','中国卖方与德国买方间的货物买卖','跨国机械设备买卖'],a:1,e:'CISG不适用于：供私人家庭使用的货物、经由拍卖的买卖、依法律执行令状的买卖、公债股票等有价证券及货币的买卖、船舶飞机气垫船、电力的买卖。',src:'2018年法考真题'},
+ {q:'信用证支付方式下，银行处理单据遵循的原则是？',o:['实质相符原则','单证严格相符原则','宽松审查原则','须审查基础交易真实性'],a:1,e:'信用证交易遵循单证严格相符原则和独立抽象原则：银行只审查单据表面与信用证条款是否一致，不受基础买卖合同约束、不审查单据真伪和货物状况。',src:'2020年法考真题'}
+],s:[
+ {q:'中国甲公司与美国乙公司签订货物买卖合同，约定适用CISG，贸易术语CIF纽约。货物在装运港装船后，甲公司向银行提交全套单据要求付款，银行以单据中提单日期与信用证不符为由拒付。问：(1)银行拒付是否合法？(2)甲公司能否以基础合同抗辩？',a:'(1)合法。信用证遵循单证严格相符原则，单据表面与信用证条款不符，银行有权拒付。(2)不能。信用证具有独立抽象性，是独立于基础合同的交易，银行处理的是单据而非货物，不受基础合同关系约束。甲公司应更换相符单据或要求乙公司修改信用证，而不能以基础合同履行情况对抗银行的拒付。',src:'历年法考主观题（国经）'}
+]},
+'理论法':{c:[
+ {q:'关于法律规则与法律原则的区别，下列哪一表述正确？',o:['法律规则比法律原则适用范围更广','法律原则有严密的逻辑结构，法律规则较为笼统','法律规则以"全有或全无"方式适用，法律原则以衡量权衡方式适用','法律原则的冲突必然导致其中一个无效'],a:2,e:'法律规则以"全有或全无"方式适用（要么适用要么不适用）；法律原则通过衡量权衡适用，多个原则可共存于同一案件，依分量大小适用。原则冲突不导致无效，而是权衡取舍。',src:'2019年法考真题'},
+ {q:'关于法的作用，下列哪一表述正确？',o:['法的规范作用包括指引、评价、教育、预测、强制五种','法的社会作用是法对人的行为的作用','法的强制作用是法的主要作用','法的作用都是积极的没有消极面'],a:0,e:'法的规范作用包括指引、评价、预测、教育、强制五种。社会作用是法对社会关系的作用（维护统治、执行公共事务）。指引是首要作用，强制不是主要作用。',src:'2020年法考真题'},
+ {q:'根据我国宪法，宪法的修改须由谁提议？',o:['全国人大主席团','全国人大常委会或1/5以上全国人大代表','国务院','国家主席'],a:1,e:'宪法第64条：宪法的修改由全国人大常委会或1/5以上全国人大代表提议，由全国人大以全体代表的2/3以上多数通过。',src:'2018年法考真题'},
+ {q:'根据我国宪法，下列哪项属于公民的基本义务而非基本权利？',o:['平等权','人身自由','依法纳税','宗教信仰自由'],a:2,e:'依法纳税是公民的基本义务。平等权、人身自由、宗教信仰自由均为公民基本权利。',src:'2021年法考真题'},
+ {q:'关于法律职业道德，下列哪项说法正确？',o:['法官可以接受当事人请客送礼','检察官应当恪守中立，依法独立行使检察权','律师可以为谋取业务诋毁同行','公证员可以私自出具公证书'],a:1,e:'检察官应恪守中立、依法独立公正行使检察权。法官不得接受当事人请客送礼；律师不得诋毁同行谋取业务；公证员不得私自出具公证书。这些均违反法律职业道德。',src:'2020年法考真题'}
+],s:[
+ {q:'简述全面依法治国的基本格局（科学立法、严格执法、公正司法、全民守法）的含义。',a:'全面依法治国的基本格局是"科学立法、严格执法、公正司法、全民守法"十六字方针。科学立法是前提，要求立法符合规律、体现民意、提高质量；严格执法是关键，要求行政机关依法行政、严格规范公正文明执法；公正司法是防线，要求司法机关独立公正司法、让人民群众在每个司法案件中感受公平正义；全民守法是基础，要求全体公民尊法学法守法用法。四者相互联系、相互促进，共同推进法治中国建设。',src:'历年法考主观题（理论法）'}
+]}
+};
+/* 拍平为统一题目数组（带科目/类型/来源），供出题与判分使用 */
+const ALLQ=[];
+SUBJECTS.forEach(sub=>{const d=LAWDB[sub];if(!d)return;
+  d.c.forEach(q=>ALLQ.push(Object.assign({t:'c',cat:sub},q)));
+  d.s.forEach(q=>ALLQ.push(Object.assign({t:'s',cat:sub},q)));
+});
+
+/* ============ 法考逻辑 ============ */
+const Law={st:DB.get('law',{doneDates:[],wrong:[],today:{date:'',qids:[],ans:{},sub:false}}),save(){DB.set('law',this.st)},
+  todaySubj(){const d=new Date();const r=(d.getMonth()+1+d.getDate())%8;return SUBJECTS[r]},
+  seed(){const sub=this.todaySubj();
+    const d=today();let s=0;for(const c of d)s=(s*31+c.charCodeAt(0))>>>0;
+    const sh=(arr,seed)=>{const a=[...arr];for(let i=a.length-1;i>0;i--){seed=(seed*1103515245+12345)&0x7fffffff;const j=seed%(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+    const cids=sh(ALLQ.map((q,i)=>i).filter(i=>ALLQ[i].cat===sub&&ALLQ[i].t==='c'),s);
+    const sids=ALLQ.map((q,i)=>i).filter(i=>ALLQ[i].cat===sub&&ALLQ[i].t==='s');
+    const si=sids.length?sids[s%sids.length]:null;
+    return{ci:cids,si,sub}},
+  start(){const d=today();if(this.st.today.date!==d||!this.st.today.qids.length){const ids=this.seed();const qids=[...ids.ci];if(ids.si!==null)qids.push(ids.si);this.st.today={date:d,qids,ans:{},sub:false,subj:ids.sub};this.save()}
+    $('#lStart').classList.add('hidden');$('#lQuiz').classList.remove('hidden');this.renderQ()},
+  renderQ(){const ids=this.st.today.qids,box=$('#lQs');box.innerHTML='';let done=0;
+    ids.forEach((qid,i)=>{const q=ALLQ[qid];const an=this.st.today.ans[qid]!==undefined;if(an)done++;
+      if(q.t==='c'){const div=document.createElement('div');div.className='qbox';
+        div.innerHTML=`<div class="qh">第${i+1}题 · 选择 · ${q.cat}</div><div class="qt">${q.q}</div>`;
+        const opts=document.createElement('div');opts.className='opts';
+        q.o.forEach((op,oi)=>{const lbl=document.createElement('label');
+          lbl.innerHTML=`<input type="radio" name="q${qid}" value="${oi}">${String.fromCharCode(65+oi)}. ${op}`;
+          if(an&&this.st.today.ans[qid]===oi)lbl.classList.add('sel');
+          lbl.onclick=()=>{if(this.st.today.sub)return;opts.querySelectorAll('label').forEach(l=>l.classList.remove('sel'));lbl.classList.add('sel');this.st.today.ans[qid]=oi;this.save();this.prog()};
+          opts.appendChild(lbl)});
+        div.appendChild(opts);
+        const ex=document.createElement('div');ex.className='expl';
+        if(this.st.today.sub){ex.classList.add('show');const cor=this.st.today.ans[qid]===q.a;
+          ex.innerHTML=`<b>${cor?'✅正确':'❌错误'}</b> 答案：${String.fromCharCode(65+q.a)}<br>${q.e}${q.src?'<br><span style="color:var(--sub);font-size:11px">📎 '+q.src+'</span>':''}`;
+          opts.querySelectorAll('label').forEach((l,oi)=>{if(oi===q.a)l.classList.add('cor');else if(oi===this.st.today.ans[qid]&&!cor)l.classList.add('wrg')})}
+        div.appendChild(ex);box.appendChild(div)}
+      else{const div=document.createElement('div');div.className='qbox';div.style.background='#eef4f8';div.style.borderColor='#cfe0ea';
+        div.innerHTML=`<div class="qh">第${i+1}题 · 简答 · ${q.cat}</div><div class="qt">${q.q}</div>`;
+        const ta=document.createElement('textarea');ta.rows=4;ta.placeholder='写你的答案…';
+        if(an)ta.value=this.st.today.ans[qid]||'';
+        ta.oninput=()=>{this.st.today.ans[qid]=ta.value;this.save();this.prog()};
+        div.appendChild(ta);
+        const ex=document.createElement('div');ex.className='expl';
+        if(this.st.today.sub){ex.classList.add('show');ex.innerHTML=`<b>参考答案：</b><br>${q.a.replace(/\n/g,'<br>')}${q.src?'<br><span style="color:var(--sub);font-size:11px">📎 '+q.src+'</span>':''}`}
+        div.appendChild(ex);box.appendChild(div)}});
+    this.prog();
+    if(this.st.today.sub){$('#lSub').textContent='查看结果';$('#lSub').onclick=()=>$('#lResult').scrollIntoView({behavior:'smooth'})}},
+  prog(){const ids=this.st.today.qids;let done=ids.filter(qid=>this.st.today.ans[qid]!==undefined&&this.st.today.ans[qid]!=='').length;
+    $('#lProg').style.width=(done/ids.length*100)+'%';$('#lDone').textContent=done;
+    $('#lTip').textContent=this.st.today.sub?'已提交':'答完再提交('+done+'/'+ids.length+')'},
+  submit(){const ids=this.st.today.qids;const un=ids.filter(qid=>this.st.today.ans[qid]===undefined||this.st.today.ans[qid]==='');
+    if(un.length&&!confirm('还有'+un.length+'题没答，确定提交？'))return;
+    this.st.today.sub=true;
+    const ch=ids.filter(qid=>ALLQ[qid].t==='c');let right=0;const wc=[];
+    ch.forEach(qid=>{const q=ALLQ[qid];if(this.st.today.ans[qid]===q.a)right++;else wc.push(q.cat+':'+q.q.slice(0,16)+'…')});
+    wc.forEach(w=>{if(!this.st.wrong.includes(w))this.st.wrong.push(w)});
+    if(!this.st.doneDates.includes(today()))this.st.doneDates.push(today());
+    this.save();this.renderQ();
+    const rate=ch.length?Math.round(right/ch.length*100):0;const res=$('#lResult');res.classList.remove('hidden');
+    let c='';if(rate>=90)c='这正确率，<b>法考稳了！</b>😎';else if(rate>=70)c='不错，<b>再细点就上去了</b>💪';else if(rate>=50)c='有基础，<b>把错题弄懂就是最大进步</b>～';else c='别灰心，<b>错题是金矿</b>，反复刷就通🔥';
+    res.innerHTML=`<div class="card"><h2><span class="ic">📊</span>今日战报</h2><div class="stats"><div class="stat g"><div class="n">${right}/${ch.length}</div><div class="l">选择题正确</div></div><div class="stat"><div class="n">${rate}%</div><div class="l">正确率</div></div><div class="stat o"><div class="n">${ch.length-right}</div><div class="l">错题</div></div><div class="stat b"><div class="n">${this.st.doneDates.length}</div><div class="l">练习天数</div></div></div><div class="cheer">${c}</div>${wc.length?`<div class="small">错点已加入错点本：</div><div style="margin-top:4px">${wc.map(w=>'<span class="tag err">'+w+'</span>').join('')}</div>`:''}<div class="center" style="margin-top:12px"><button class="btn ghost sm" onclick="Law.review()">错点本</button><button class="btn sm" style="margin-left:8px" onclick="Law.restart()">重置今日</button></div></div>`;
+    res.scrollIntoView({behavior:'smooth'});this.stat()},
+  restart(){if(!confirm('重置今日练习？'))return;this.st.today={date:'',qids:[],ans:{},sub:false};this.save();$('#lResult').classList.add('hidden');$('#lQuiz').classList.add('hidden');$('#lStart').classList.remove('hidden');this.stat()},
+  review(){const wp=this.st.wrong,res=$('#lResult');res.classList.remove('hidden');
+    res.innerHTML=`<div class="card"><h2><span class="ic">📌</span>错点本（${wp.length}条）</h2>${wp.length?wp.map(w=>'<span class="tag err">'+w+'</span>').join(''):'<div class="small">还没有错点，去做题～</div>'}<div class="center" style="margin-top:12px"><button class="btn ghost sm" onclick="Law.clearW()">清空</button></div></div>`},
+  clearW(){if(confirm('清空错点本？')){this.st.wrong=[];this.save();this.review()}},
+  stat(){const sub=this.todaySubj();$('#lDate').textContent=sub;const tip=$('#lSubjTip');if(tip)tip.innerHTML='今日科目：<b>'+sub+'</b> · 历年真题（8天轮换），答完出解析、自动记错点';
+    const t=this.st.today;if(t.date===today()&&t.qids.length){$('#lDone').textContent=t.qids.filter(qid=>t.ans[qid]!==undefined&&t.ans[qid]!=='').length;
+      if(t.sub){const ch=t.qids.filter(qid=>ALLQ[qid].t==='c');const r=ch.filter(qid=>t.ans[qid]===ALLQ[qid].a).length;$('#lScore').textContent=Math.round(r/ch.length*100)+'%'}else $('#lScore').textContent='未提交'}
+    else{$('#lDone').textContent=0;$('#lScore').textContent='—'}$('#lWrong').textContent=this.st.wrong.length}
+};
+
+/* ============ 菜谱库（占位，稍后补满100+） ============ */
+const RECIPES=[
+{n:'西红柿炒鸡蛋',c:'小炒',i:'西红柿2个、鸡蛋3个、葱、盐、糖、油',s:'鸡蛋打散加少许盐，番茄切块；热油炒蛋至凝固盛出；同一锅炒番茄出汁加少许糖；倒回蛋翻炒撒葱花。',t:'番茄要炒出汁才香，加一点糖提鲜。'},
+{n:'青椒肉丝',c:'小炒',i:'猪里脊200g、青椒2个、姜蒜、生抽、料酒、淀粉、盐',s:'肉丝用料酒生抽淀粉腌10分钟；青椒切丝；热油滑炒肉丝变色盛出；爆香姜蒜下青椒炒，倒回肉丝加盐调味。',t:'肉丝腌过才嫩，大火快炒是关键。'},
+{n:'鱼香肉丝',c:'小炒',i:'猪里脊200g、木耳、胡萝卜、青椒、豆瓣酱、葱姜蒜、生抽醋糖淀粉',s:'肉丝腌好，配菜切丝，调鱼香汁(生抽2醋1糖1淀粉水3)；热油炒肉丝盛出；爆香豆瓣酱姜蒜下配菜；倒回肉丝淋汁翻匀。',t:'鱼香汁黄金比例生抽:醋:糖=2:1:1。'},
+{n:'宫保鸡丁',c:'小炒',i:'鸡胸肉250g、花生米、干辣椒、花椒、葱、生抽醋糖、淀粉',s:'鸡丁腌好，调汁(生抽醋糖淀粉水)；花生米炸香；爆香干辣椒花椒葱姜，下鸡丁炒变色；倒汁翻炒撒花生。',t:'花生最后放才脆，鸡丁用鸡腿肉更嫩。'},
+{n:'回锅肉',c:'小炒',i:'五花肉300g、青蒜、郫县豆瓣酱、甜面酱、姜、生抽',s:'五花肉整块煮七八成熟捞出切薄片；热锅少油下肉片煸至卷曲出油；加豆瓣酱甜面酱炒上色；下青蒜段翻炒断生。',t:'肉要煸到"灯盏窝"微微卷起才香。'},
+{n:'木须肉',c:'小炒',i:'猪里脊150g、鸡蛋3个、黄花菜、木耳、黄瓜、葱姜、生抽',s:'肉切片腌好；鸡蛋炒散盛出；爆香葱姜下肉片，加黄花木耳炒；下黄瓜片，倒回鸡蛋加生抽调味。',t:'黄花菜要提前泡发，鸡蛋别炒老。'},
+{n:'京酱肉丝',c:'小炒',i:'猪里脊250g、甜面酱、葱白、豆腐皮、糖、料酒、淀粉',s:'肉丝腌好滑油盛出；锅留底油下甜面酱糖料酒炒香；倒回肉丝裹匀酱汁；葱白切丝，豆腐皮切块包着吃。',t:'酱要炒出香味但别炒糊，甜面酱偏咸可加糖。'},
+{n:'蚂蚁上树',c:'小炒',i:'粉丝2把、肉末100g、豆瓣酱、葱姜蒜、生抽、料酒',s:'粉丝温水泡软；热油炒肉末变色加豆瓣酱出红油；加葱姜蒜生抽料酒水烧开；下粉丝煮至入味收汁。',t:'粉丝易糊锅，留点汤汁更入味。'},
+{n:'蒜薹炒肉',c:'小炒',i:'蒜薹200g、五花肉150g、生抽、盐、姜',s:'蒜薹切段，肉切片；热锅煸五花肉出油；下姜片蒜薹大火炒；加生抽盐调味，蒜薹断生出锅。',t:'蒜薹用五花肉的油炒更香，断生即可别炒软。'},
+{n:'芹菜炒肉丝',c:'小炒',i:'芹菜200g、猪瘦肉150g、红椒、生抽、淀粉、姜',s:'肉切丝腌好；芹菜切段焯水；热油炒肉丝变色盛出；下姜芹菜红椒翻炒，倒回肉丝加生抽调味。',t:'芹菜焯水去涩，大火快炒保持脆嫩。'},
+{n:'韭菜炒鸡蛋',c:'小炒',i:'韭菜200g、鸡蛋4个、盐、油',s:'韭菜切末，鸡蛋打散；韭菜末拌入蛋液加盐；热油倒入蛋液，凝固后划散翻炒。',t:'韭菜遇盐易出水，下锅前再拌盐。'},
+{n:'洋葱炒蛋',c:'小炒',i:'洋葱1个、鸡蛋3个、盐、生抽、油',s:'洋葱切丝，鸡蛋打散；热油炒蛋盛出；下洋葱炒软炒香；倒回鸡蛋加少许生抽盐翻匀。',t:'洋葱炒软才甜，小火慢炒出焦香更好。'},
+{n:'豆角炒肉',c:'小炒',i:'四季豆250g、五花肉150g、蒜、生抽、盐',s:'豆角掰段焯水至断生；五花肉切片煸出油；下蒜片豆角翻炒；加生抽盐调味。',t:'四季豆必须炒熟，否则容易中毒。'},
+{n:'香菇炒肉片',c:'小炒',i:'鲜香菇200g、猪瘦肉150g、青红椒、蒜、生抽、淀粉',s:'肉切片腌好；香菇切片焯水；热油炒肉盛出；下蒜香菇青红椒炒软；倒回肉加生抽调味。',t:'香菇焯水去土腥，炒出水分才鲜。'},
+{n:'辣子鸡丁',c:'小炒',i:'鸡腿肉250g、干辣椒、花椒、葱姜蒜、生抽、淀粉、芝麻',s:'鸡丁腌好炸金黄；锅留底油爆香干辣椒花椒葱姜；下鸡丁翻炒撒芝麻盐。',t:'干辣椒量要足才地道，怕辣可减少。'},
+{n:'农家小炒肉',c:'小炒',i:'五花肉200g、青尖椒150g、蒜、豆豉、生抽',s:'五花肉切薄片煸出油；下蒜片豆豉炒香；加青椒段翻炒；生抽调味出锅。',t:'青椒选尖的才够味，肉要煸干香。'},
+{n:'红烧排骨',c:'肉类',i:'排骨500g、姜葱、八角、生抽老抽、料酒、冰糖、盐',s:'排骨焯水去血沫；少油炒冰糖至焦糖色下排骨上色；加料加热水没过；大火开转小火炖40分钟收汁。',t:'糖色别炒糊否则发苦。'},
+{n:'糖醋排骨',c:'肉类',i:'排骨500g、醋、糖、生抽、料酒、姜、芝麻',s:'排骨焯水；热油煎至两面金黄；加生抽醋糖料酒水，大火烧开转小火炖30分钟；大火收汁撒芝麻。',t:'糖醋比例1:1，收汁要浓稠裹住排骨。'},
+{n:'红烧肉',c:'肉类',i:'五花肉500g、冰糖、生抽老抽、料酒、姜葱八角',s:'五花肉切块焯水；炒糖色下肉上色；加料加热水没过；大火开小火炖1小时收汁。',t:'五花肉选三层的好，炖够时间才软烂。'},
+{n:'粉蒸肉',c:'肉类',i:'五花肉400g、蒸肉米粉、红薯/土豆、生抽、豆瓣酱、料酒',s:'肉切片用生抽豆瓣酱料酒腌1小时；裹上蒸肉米粉；碗底铺红薯块，肉皮朝下码好；上锅蒸1.5小时。',t:'米粉超市有售，蒸的时间要够才软。'},
+{n:'梅菜扣肉',c:'肉类',i:'五花肉500g、梅干菜、生抽老抽、糖、料酒、腐乳',s:'五花肉整块煮透捞出抹老抽炸皮上色；切片皮朝下码碗；梅干菜炒香铺上；加调料蒸2小时，倒扣出盘。',t:'肉皮炸过蒸出来才起皱好看。'},
+{n:'东坡肉',c:'肉类',i:'五花肉600g、冰糖、生抽老抽、料酒、姜葱',s:'五花肉整块焯水切大块；砂锅底铺姜葱，肉皮朝下码好；加冰糖生抽料酒(不放水)；小火焖2小时翻面收汁。',t:'正宗东坡肉"慢着火少着水"，靠料酒焖。'},
+{n:'锅包肉',c:'肉类',i:'猪里脊300g、土豆淀粉、醋糖、葱姜蒜、胡萝卜丝',s:'里脊切大片腌好裹土豆淀粉糊；炸至金黄捞出；调汁(醋糖生抽)；锅留底油下葱姜胡萝卜丝，倒汁下肉翻匀。',t:'炸两遍更酥，土豆淀粉是关键。'},
+{n:'水煮肉片',c:'肉类',i:'猪里脊300g、豆芽白菜、豆瓣酱、花椒干辣椒、淀粉、蒜',s:'配菜焯水铺碗底；肉片腌好滑熟铺上；撒蒜末花椒干辣椒；热油浇上滋啦一声。',t:'最后那勺热油是灵魂，要浇在花椒辣椒上。'},
+{n:'蒜泥白肉',c:'肉类',i:'五花肉400g、蒜、生抽、醋、辣椒油、糖',s:'五花肉整块加姜葱煮断生关火焖20分钟；捞出切薄片；蒜捣泥加生抽醋糖辣椒油调汁；浇在肉片上。',t:'肉煮好后焖才嫩，切片越薄越好。'},
+{n:'叉烧肉',c:'肉类',i:'梅花肉500g、叉烧酱、蜂蜜、生抽、料酒、红曲粉(可选)',s:'肉切大条用叉烧酱蜂蜜生抽料酒腌过夜；烤箱200度烤25分钟，中途刷蜂蜜翻面；切片。',t:'腌够时间才入味，最后刷蜂蜜增色增亮。'},
+{n:'土豆炖牛肉',c:'肉类',i:'牛腩400g、土豆2个、胡萝卜、洋葱、姜八角、生抽老抽、盐',s:'牛腩切块焯水；热油炒洋葱姜下牛肉加八角生抽老抽；加热水炖1小时；加土豆胡萝卜再炖20分钟收汁。',t:'牛肉炖到筷子能戳穿才烂。'},
+{n:'葱爆羊肉',c:'肉类',i:'羊肉300g、大葱2根、生抽、料酒、醋、淀粉',s:'羊肉切片用生抽料酒淀粉腌；大葱切斜段；热油大火下羊肉变色；下葱段翻炒，淋少许醋出锅。',t:'大火快炒，葱要断生带脆，羊肉别炒老。'},
+{n:'酱牛肉',c:'肉类',i:'牛腱子1000g、生抽老抽、甜面酱、八角桂皮香叶、姜葱、冰糖',s:'牛肉焯水；锅加生抽老抽甜面酱香料冰糖姜葱和水；下牛肉大火开小火炖2小时；浸泡过夜切片。',t:'煮好浸泡过夜才入味，切薄片不散。'},
+{n:'卤猪蹄',c:'肉类',i:'猪蹄2个、八角桂皮、生抽老抽、冰糖、料酒、姜葱',s:'猪蹄焯水拔毛；锅炒香料姜葱加生抽老抽冰糖料酒水；下猪蹄大火开小火炖1.5小时至软烂收汁。',t:'猪蹄要炖到骨肉将离，胶原蛋白才出来。'},
+{n:'糖醋里脊',c:'肉类',i:'猪里脊300g、番茄酱、醋、糖、淀粉、鸡蛋、姜',s:'里脊切条裹蛋清淀粉糊；炸至金黄捞出；调汁(番茄酱2醋1糖1水3淀粉)；锅留底油倒汁烧开浓稠下肉翻匀。',t:'炸两次更酥，汁要浓稠才裹得住。'},
+{n:'红烧猪蹄',c:'肉类',i:'猪蹄2个、冰糖、生抽老抽、八角、姜葱、料酒',s:'猪蹄焯水；炒糖色下猪蹄上色；加料加水没过；大火开小火炖1.5小时收汁。',t:'冰糖炒色比老抽上色更亮。'},
+{n:'可乐鸡翅',c:'禽蛋',i:'鸡翅8个、可乐一罐、姜、生抽老抽、料酒',s:'鸡翅划刀焯水；热油煎两面金黄；加姜料酒生抽老抽倒可乐没过；烧开转中小火炖15分钟大火收汁。',t:'收汁要盯着别糊。'},
+{n:'啤酒鸭',c:'禽蛋',i:'鸭半只、啤酒1罐、姜蒜、八角、生抽老抽、干辣椒',s:'鸭块焯水；热油煸炒出油；加姜蒜八角干辣椒生抽老抽炒；倒啤酒没过；大火开小火炖40分钟收汁。',t:'鸭肉要先煸出油才不腥，啤酒代水更香。'},
+{n:'白切鸡',c:'禽蛋',i:'三黄鸡1只、姜葱、盐、香油',s:'整鸡水开下锅，关火盖盖焖20分钟；捞出冰水浸泡；斩块；姜葱剁末加热油淋，加盐蘸食。',t:'焖而非煮，鸡肉才嫩；冰水激一下皮更脆。'},
+{n:'口水鸡',c:'禽蛋',i:'鸡腿2个、花生碎、芝麻、辣椒油、花椒油、生抽醋糖、蒜',s:'鸡腿煮断生焖10分钟；冰水浸泡切块；调汁(辣椒油花椒油生抽醋糖蒜末)；浇在鸡块上撒花生芝麻葱花。',t:'冰水泡过的鸡肉紧实弹牙。'},
+{n:'香菇炖鸡',c:'禽蛋',i:'鸡半只、干香菇、红枣、姜葱、料酒、盐',s:'鸡块焯水；香菇泡发；砂锅放鸡块香菇红枣姜葱料酒加水；大火开小火炖1小时加盐。',t:'干香菇比鲜的香，泡香菇的水一起炖。'},
+{n:'三杯鸡',c:'禽蛋',i:'鸡腿3个、九层塔、姜蒜、麻油、酱油、米酒各一杯',s:'鸡腿切块焯水；麻油爆香姜蒜；下鸡块炒变色；加酱油米酒各一杯；大火开小火焖15分钟收汁撒九层塔。',t:'三杯=麻油酱油米酒各一杯，九层塔是灵魂。'},
+{n:'黄焖鸡',c:'禽蛋',i:'鸡腿3个、香菇、青椒、姜蒜、生抽老抽、糖、料酒',s:'鸡腿切块焯水；热油炒糖色下鸡块；加姜蒜香菇生抽老抽料酒水；焖20分钟下青椒收汁。',t:'糖色上色比老抽好看，汤汁拌饭一绝。'},
+{n:'红烧鸭',c:'禽蛋',i:'鸭半只、姜蒜、八角、生抽老抽、冰糖、料酒',s:'鸭块焯水煸炒出油；炒冰糖色下鸭块；加姜蒜八角生抽老抽料酒水；大火开小火炖40分钟收汁。',t:'鸭油多要先煸出，炖出来才不腻。'},
+{n:'蒸水蛋',c:'禽蛋',i:'鸡蛋2个、温水、盐、生抽、香油、葱花',s:'鸡蛋打散加1.5倍温水和盐过筛；盖保鲜膜扎孔；开水上锅中小火蒸10分钟；淋生抽香油撒葱花。',t:'蛋液过筛更滑嫩，温水比例1:1.5。'},
+{n:'虎皮鹌鹑蛋',c:'禽蛋',i:'鹌鹑蛋20个、生抽老抽、糖、番茄酱、蒜',s:'鹌鹑蛋煮熟剥壳擦干；炸至表皮起虎皮；锅留底油下蒜末生抽老抽糖番茄酱；下蛋翻炒裹汁。',t:'蛋要擦干再炸，否则溅油。'},
+{n:'茶叶蛋',c:'禽蛋',i:'鸡蛋10个、红茶包、八角桂皮、生抽老抽、盐',s:'鸡蛋煮熟敲裂壳；锅加水茶叶八角桂皮生抽老抽盐；下鸡蛋小火煮20分钟泡过夜。',t:'敲裂壳才入味，泡越久越香。'},
+{n:'香煎鸡腿排',c:'禽蛋',i:'鸡腿2个、黑胡椒、盐、料酒、蒜、黄油',s:'鸡腿去骨摊平，用刀背拍松；撒盐黑胡椒料酒腌20分钟；热锅黄油下蒜，皮朝下煎至金黄翻面煎熟。',t:'皮朝下先煎出油，中火煎到皮脆。'},
+{n:'清蒸鲈鱼',c:'水产',i:'鲈鱼1条、葱姜丝、蒸鱼豉油、料酒、热油',s:'鱼处理干净抹料酒；盘底铺葱姜鱼身划刀；水开上锅蒸8分钟；倒掉汤汁换新葱丝，淋蒸鱼豉油浇热油。',t:'蒸的时间按1斤8分钟，倒掉腥水是关键。'},
+{n:'红烧鱼',c:'水产',i:'鱼1条、姜蒜、生抽老抽、醋、糖、料酒、淀粉',s:'鱼两面划刀擦干煎至金黄；下姜蒜爆香加生抽老抽醋糖料酒水；大火开小火炖15分钟收汁勾芡。',t:'鱼要先煎定型不散，醋去腥增香。'},
+{n:'糖醋鱼',c:'水产',i:'鱼1条、番茄酱、醋糖、淀粉、料酒、姜',s:'鱼划刀裹粉炸至金黄装盘；调糖醋汁(番茄酱醋糖水)烧开勾芡；浇在鱼上。',t:'鱼要炸脆，汁现浇现吃。'},
+{n:'水煮鱼',c:'水产',i:'草鱼片300g、豆芽、豆瓣酱、花椒干辣椒、淀粉、蒜',s:'豆芽焯水铺碗；鱼片腌好滑熟铺上；撒蒜末花椒干辣椒；热油浇上。',t:'鱼片用蛋清淀粉浆过才嫩，热油激香。'},
+{n:'酸菜鱼',c:'水产',i:'草鱼1条、酸菜、泡椒、姜蒜、花椒、淀粉',s:'鱼片腌好；酸菜切段炒香加水煮开；下鱼头骨煮汤捞出；下鱼片煮熟连汤倒入；撒花椒浇热油。',t:'酸菜要炒出香味，鱼片别煮久。'},
+{n:'剁椒鱼头',c:'水产',i:'胖头鱼头1个、剁椒、姜蒜、料酒、生抽、葱',s:'鱼头剖开抹料酒盐腌；铺剁椒姜蒜末；水开上锅蒸12分钟；撒葱花浇热油。',t:'剁椒要铺满，蒸出红油才够味。'},
+{n:'辣炒花甲',c:'水产',i:'花甲500g、姜蒜、干辣椒、豆瓣酱、料酒、葱',s:'花甲吐沙洗净；热油爆香姜蒜干辣椒豆瓣酱；下花甲翻炒，淋料酒盖盖；开口后加盐葱花出锅。',t:'花甲要提前吐沙，开口即熟别炒久。'},
+{n:'油焖大虾',c:'水产',i:'基围虾500g、姜葱蒜、番茄酱、生抽、糖、料酒',s:'虾去虾线剪须；热油煎虾至变红；下姜葱蒜番茄酱生抽糖料酒；加少许水焖3分钟收汁。',t:'虾要煎出虾油，汤汁拌饭香。'},
+{n:'蒜蓉粉丝虾',c:'水产',i:'虾10只、粉丝1把、蒜、生抽、料酒、葱',s:'粉丝泡软铺盘；虾开背去线码上；蒜蓉炒香加生抽铺虾上；上锅蒸6分钟撒葱花浇热油。',t:'蒜蓉要炒香再蒸，粉丝吸虾汁超好吃。'},
+{n:'白灼虾',c:'水产',i:'鲜虾500g、姜葱、料酒、生抽、蒜、醋',s:'水加姜葱料酒烧开；下虾煮至变红弯曲捞出；冰水过凉；蘸生抽蒜醋。',t:'虾要水宽火大，变色即捞别煮老。'},
+{n:'红烧带鱼',c:'水产',i:'带鱼500g、姜蒜、生抽老抽、醋、糖、料酒、淀粉',s:'带鱼切段裹粉煎金黄；下姜蒜爆香加生抽老抽醋糖料酒水；大火开小火炖15分钟收汁。',t:'带鱼裹粉煎不破皮，醋提鲜去腥。'},
+{n:'干煸鱿鱼',c:'水产',i:'鱿鱼2条、芹菜、干辣椒、花椒、姜蒜、生抽',s:'鱿鱼处理切花刀焯水；热油煸炒鱿鱼卷起盛出；爆香干辣椒花椒姜蒜下芹菜；倒回鱿鱼加生抽翻炒。',t:'鱿鱼焯水卷起即可，炒久会老。'},
+{n:'香辣蟹',c:'水产',i:'螃蟹3只、干辣椒、花椒、姜蒜、豆瓣酱、葱、淀粉',s:'蟹处理切块切口蘸粉炸；爆香干辣椒花椒姜蒜豆瓣酱；下蟹翻炒加料酒水焖5分钟收汁撒葱。',t:'蟹切口蘸粉炸能封住蟹黄不流失。'},
+{n:'清蒸扇贝',c:'水产',i:'扇贝6个、粉丝、蒜、生抽、葱',s:'粉丝泡软铺扇贝上；蒜蓉炒香铺上；上锅蒸5分钟；淋生抽撒葱花浇热油。',t:'扇贝蒸5分钟足够，蒜蓉要炒香。'},
+{n:'麻婆豆腐',c:'素菜',i:'嫩豆腐1盒、肉末100g、豆瓣酱、花椒粉、葱姜蒜、生抽、淀粉',s:'豆腐切块焯水；热油炒肉末加豆瓣酱出红油；加姜蒜生抽水烧开；下豆腐推匀煮3分钟勾芡撒花椒粉。',t:'豆腐别用铲子搅，用推的。'},
+{n:'家常豆腐',c:'素菜',i:'老豆腐1块、五花肉、青红椒、豆瓣酱、生抽、蒜',s:'豆腐切三角煎两面金黄；肉片煸出油加豆瓣酱蒜；下青红椒豆腐；加生抽水焖2分钟收汁。',t:'老豆腐煎才成型，外焦里嫩。'},
+{n:'地三鲜',c:'素菜',i:'茄子1个、土豆1个、青椒2个、蒜、生抽、糖、淀粉',s:'土豆茄子切滚刀块，土豆炸熟茄子炸软；调汁(生抽糖淀粉水)；爆香蒜下三鲜倒汁翻炒。',t:'茄子过油更香，吸油大可少油煎。'},
+{n:'干煸四季豆',c:'素菜',i:'四季豆400g、肉末、干辣椒、花椒、蒜、生抽',s:'四季豆掰段炸至表皮起皱；肉末煸香加干辣椒花椒蒜；倒回豆角加生抽翻炒。',t:'豆角必须炸熟煸透，生豆角有毒。'},
+{n:'蒜蓉西兰花',c:'素菜',i:'西兰花1个、蒜、盐、油',s:'西兰花掰小朵焯水；热油爆香蒜末；下西兰花翻炒加盐调味。',t:'焯水加少许盐和油保持翠绿。'},
+{n:'手撕包菜',c:'素菜',i:'包菜1个、干辣椒、蒜、五花肉、生抽、醋',s:'包菜手撕成片；五花肉煸出油加干辣椒蒜；下包菜大火翻炒；加生抽醋调味。',t:'手撕的断面更入味，大火快炒保持脆。'},
+{n:'酸辣土豆丝',c:'素菜',i:'土豆2个、干辣椒、花椒、蒜、醋、盐',s:'土豆切细丝泡水去淀粉沥干；热油爆香花椒干辣椒蒜；下土豆丝大火快炒，沿锅边淋醋加盐。',t:'醋沿锅边淋提香，土豆丝要泡去淀粉才脆。'},
+{n:'醋溜白菜',c:'素菜',i:'大白菜300g、干辣椒、醋、生抽、糖、蒜',s:'白菜帮叶分开切块；热油爆香干辣椒蒜；先下白菜帮炒软再下叶；加醋生抽糖翻炒。',t:'帮叶分开下锅，帮要先炒，醋要最后沿锅边淋。'},
+{n:'清炒空心菜',c:'素菜',i:'空心菜300g、蒜、盐、油',s:'空心菜切段；热油爆香蒜末；下空心菜大火快炒；加盐调味出锅。',t:'大火快炒，炒软即出，别炒久发黑。'},
+{n:'蒜蓉油麦菜',c:'素菜',i:'油麦菜300g、蒜、盐、油',s:'油麦菜切段；热油爆香蒜末；下油麦菜大火翻炒；加盐调味。',t:'油麦菜易熟，下锅20秒即可。'},
+{n:'香菇油菜',c:'素菜',i:'油菜300g、香菇6朵、蒜、生抽、蚝油、淀粉',s:'油菜焯水摆盘；香菇切片炒香加生抽蚝油水；勾薄芡浇在油菜上。',t:'油菜焯水加少许盐油保持翠绿。'},
+{n:'红烧茄子',c:'素菜',i:'茄子2个、蒜、生抽老抽、糖、淀粉',s:'茄子切滚刀块裹粉炸软；调汁(生抽老抽糖淀粉水)；爆香蒜下茄子倒汁翻炒。',t:'茄子裹粉炸不易吸太多油。'},
+{n:'鱼香茄子',c:'素菜',i:'茄子2个、肉末、豆瓣酱、葱姜蒜、生抽醋糖',s:'茄子切条炸软；炒肉末加豆瓣酱；加葱姜蒜和鱼香汁；下茄子翻炒收汁。',t:'茄子炸软再烧更入味，鱼香汁比例同鱼香肉丝。'},
+{n:'松仁玉米',c:'素菜',i:'甜玉米粒200g、松仁、青红椒、盐、糖',s:'松仁小火炒香盛出；热油下玉米粒青红椒炒；加盐糖调味；撒松仁。',t:'松仁小火炒别糊，最后放保持脆。'},
+{n:'紫菜蛋花汤',c:'汤羹',i:'紫菜、鸡蛋2个、虾皮、盐、香油、葱',s:'水烧开下紫菜虾皮；蛋液划散淋入；加盐香油撒葱花。',t:'蛋液沿锅边淋成蛋花，关火即成。'},
+{n:'玉米排骨汤',c:'汤羹',i:'排骨400g、甜玉米2根、姜、盐',s:'排骨焯水；玉米切段；砂锅放排骨玉米姜加水；大火开小火炖1小时加盐。',t:'甜玉米提鲜，炖够时间汤才白。'},
+{n:'冬瓜排骨汤',c:'汤羹',i:'排骨400g、冬瓜300g、姜、盐',s:'排骨焯水；砂锅放排骨姜加水炖40分钟；下冬瓜块再炖15分钟加盐。',t:'冬瓜后放，煮透明即可。'},
+{n:'莲藕排骨汤',c:'汤羹',i:'排骨400g、莲藕1节、姜、盐',s:'排骨焯水；莲藕切块；砂锅放排骨莲藕姜加水；大火开小火炖1.5小时加盐。',t:'选粉藕炖出来才糯，汤色微红。'},
+{n:'银耳莲子羹',c:'汤羹',i:'银耳1朵、莲子、红枣、冰糖、枸杞',s:'银耳泡发撕小朵；砂锅加银耳莲子红枣加水；大火开小火炖1小时至胶质浓稠；加冰糖枸杞。',t:'银耳要撕碎才易出胶，小火慢炖。'},
+{n:'番茄牛腩汤',c:'汤羹',i:'牛腩400g、番茄3个、洋葱、姜、番茄酱、盐',s:'牛腩焯水；番茄去皮切块炒出汁；下牛腩洋葱姜番茄酱加水；大火开小火炖1.5小时加盐。',t:'番茄要炒出汁汤才浓，加番茄酱增色。'},
+{n:'鲫鱼豆腐汤',c:'汤羹',i:'鲫鱼1条、豆腐1块、姜葱、料酒、盐',s:'鲫鱼两面煎黄；加姜葱料酒开水；大火煮10分钟汤变白；下豆腐块炖10分钟加盐。',t:'煎鱼后加开水大火煮，汤才奶白。'},
+{n:'萝卜羊肉汤',c:'汤羹',i:'羊肉400g、白萝卜1个、姜葱、料酒、盐、胡椒粉',s:'羊肉焯水；砂锅放羊肉姜葱料酒加水炖1小时；下萝卜块再炖20分钟加盐胡椒粉。',t:'羊肉加萝卜去膻，胡椒粉提鲜。'},
+{n:'酸辣汤',c:'汤羹',i:'豆腐、木耳、火腿、鸡蛋、醋、胡椒粉、淀粉',s:'豆腐木耳火腿切丝；水烧开下丝煮熟；加醋胡椒粉盐；勾薄芡淋蛋液；撒香菜香油。',t:'醋和胡椒要足才酸辣，勾芡后淋蛋花。'},
+{n:'蘑菇鸡蛋汤',c:'汤羹',i:'平菇200g、鸡蛋2个、盐、香油、葱',s:'蘑菇撕小朵；水烧开下蘑菇煮3分钟；淋蛋液成花；加盐香油撒葱。',t:'蘑菇先煮出鲜味，蛋花最后淋。'},
+{n:'蛋炒饭',c:'主食',i:'隔夜饭1碗、鸡蛋2个、葱花、火腿丁、盐、油',s:'鸡蛋打散；热油炒蛋碎盛出；油热下米饭大火炒散；倒回鸡蛋火腿炒匀撒葱花加盐。',t:'秘诀三字"隔夜饭"，水分少才炒得散。'},
+{n:'扬州炒饭',c:'主食',i:'米饭1碗、鸡蛋、虾仁、火腿、青豆玉米、葱、盐',s:'配料焯水；热油炒蛋下米饭炒散；加虾仁火腿青豆玉米翻炒；加盐葱花。',t:'配料多样才正宗，米饭要粒粒分明。'},
+{n:'葱油拌面',c:'主食',i:'面条、小葱、生抽、老抽、糖、油',s:'小葱切段炸至焦黄捞出；葱油加生抽老抽糖煮开；面条煮熟过水；浇葱油汁拌匀。',t:'葱要炸到焦黄才香，汁要调得稍咸。'},
+{n:'炸酱面',c:'主食',i:'面条、肉末、黄酱甜面酱、黄瓜丝、豆芽、姜',s:'热油炒肉末加姜；下黄酱甜面酱炒香加水小火熬10分钟；面条煮熟过水；浇酱撒黄瓜丝豆芽。',t:'黄酱甜面酱1:1，小火熬出酱香。'},
+{n:'担担面',c:'主食',i:'面条、肉末、芽菜、花生碎、辣椒油、花椒粉、生抽',s:'肉末炒香加芽菜；调碗底(辣椒油花椒粉生抽芽菜肉末)；面条煮熟捞入碗中；撒花生碎葱花。',t:'芽菜是灵魂，辣椒油要够香。'},
+{n:'热干面',c:'主食',i:'碱水面、芝麻酱、香油、生抽、酸豆角、葱花',s:'芝麻酱加香油生抽调稀；面条煮熟拌油晾凉；吃时加热水烫热；浇芝麻酱撒酸豆角葱花。',t:'芝麻酱要调得稀稠适中，拌开就吃。'},
+{n:'葱油饼',c:'主食',i:'面粉300g、葱、油、盐',s:'面粉加热水揉面醒20分钟；擀开抹油撒葱花盐；卷起再擀圆；平底锅煎两面金黄。',t:'半烫面更软，卷层次才酥。'},
+{n:'韭菜盒子',c:'主食',i:'面粉、韭菜、鸡蛋、虾皮、盐、油',s:'烫面醒发；韭菜鸡蛋虾皮做馅；面皮包馅捏边；平底锅煎两面金黄。',t:'韭菜拌油锁水，现包现煎。'},
+{n:'炒河粉',c:'主食',i:'河粉、牛肉、豆芽、韭黄、生抽、老抽、油',s:'牛肉切片腌好滑油；热油下豆芽河粉；加生抽老抽翻炒；下牛肉韭黄炒匀。',t:'河粉易碎用颠勺不用铲，大火快炒。'},
+{n:'煲仔饭',c:'主食',i:'米、腊肠腊肉、青菜、鸡蛋、生抽、糖、油',s:'砂锅抹油下米加水煮；水快干时铺腊肠腊肉；打入鸡蛋；小火焖10分钟；淋调汁(生抽糖)烫青菜。',t:'锅边抹油起锅巴，小火焖出焦香。'},
+{n:'家常饺子',c:'主食',i:'饺子皮、猪肉馅、白菜/韭菜、葱、生抽、香油、盐',s:'肉馅加水搅打上劲加调料；白菜剁碎挤水拌入；包饺子；水开下饺子煮浮点点凉水三次。',t:'肉馅要打水上劲才嫩，点凉水煮透。'},
+{n:'黑芝麻汤圆',c:'主食',i:'糯米粉、黑芝麻、白糖、猪油',s:'黑芝麻炒熟磨碎加糖猪油拌匀冷冻；糯米粉加温水和面；包馅搓圆；水开下汤圆浮起再煮2分钟。',t:'馅冷冻后更好包，浮起后点一次水。'},
+{n:'凉拌黄瓜',c:'凉菜',i:'黄瓜2根、蒜、醋、生抽、辣椒油、盐、糖、香油',s:'黄瓜拍碎切段加盐腌5分钟倒水；加蒜末醋生抽糖香油辣椒油拌匀。',t:'黄瓜用拍的别用切的，断面挂汁。'},
+{n:'凉拌木耳',c:'凉菜',i:'干木耳、蒜、香菜、生抽醋、辣椒油、糖、香油',s:'木耳泡发焯水；加蒜末香菜生抽醋糖辣椒油香油拌匀。',t:'木耳焯水1分钟即脆，泡发别超2小时。'},
+{n:'皮蛋豆腐',c:'凉菜',i:'内酯豆腐1盒、皮蛋2个、蒜、生抽、香油、葱花',s:'豆腐切块装盘；皮蛋切瓣码上；蒜末生抽香油调汁浇上撒葱花。',t:'豆腐先蒸2分钟去豆腥，皮蛋煮一下更好切。'},
+{n:'凉拌三丝',c:'凉菜',i:'海带丝、胡萝卜丝、粉丝、蒜、生抽醋、辣椒油',s:'海带胡萝卜粉丝分别焯水；过凉水沥干；加蒜末生抽醋辣椒油香油拌匀。',t:'焯水后过凉水才脆爽。'},
+{n:'凉拌海带丝',c:'凉菜',i:'海带丝、蒜、香菜、醋、生抽、辣椒油、糖',s:'海带丝焯水过凉；加蒜末香菜醋生抽糖辣椒油拌匀。',t:'海带丝焯水2分钟，过凉水保持脆。'},
+{n:'夫妻肺片',c:'凉菜',i:'牛肉牛杂、花生碎、芝麻、辣椒油、花椒油、生抽、卤水',s:'牛肉牛杂卤熟切薄片；加卤水辣椒油花椒油生抽拌匀；撒花生碎芝麻葱花。',t:'卤水是关键，片要薄才入味。'},
+{n:'凉拌皮蛋',c:'凉菜',i:'皮蛋3个、蒜、姜、生抽醋、辣椒油、香油、葱',s:'皮蛋煮3分钟(好切)切瓣装盘；蒜末姜末生抽醋辣椒油香油调汁浇上撒葱。',t:'皮蛋煮一下蛋黄凝固更好切。'},
+{n:'老虎菜',c:'凉菜',i:'青椒、洋葱、香菜、黄瓜丝、生抽醋、香油、辣椒油',s:'青椒洋葱切丝，香菜切段；加黄瓜丝；生抽醋香油辣椒油拌匀。',t:'洋葱冰水泡10分钟去辛辣，丝要细。'},
+{n:'红豆沙',c:'甜品',i:'红豆200g、冰糖、陈皮(可选)',s:'红豆泡4小时；加水大火开小火煮1.5小时至软烂；加冰糖搅碎(可留颗粒)。',t:'红豆要泡透，陈皮增香解腻。'},
+{n:'绿豆汤',c:'甜品',i:'绿豆200g、冰糖、百合(可选)',s:'绿豆泡1小时；加水大火煮开小火煮40分钟；加冰糖煮至融化。',t:'绿豆冷冻后再煮易开花出沙。'},
+{n:'银耳羹',c:'甜品',i:'银耳1朵、红枣、枸杞、冰糖',s:'银耳泡发撕碎；加水大火开小火炖1小时出胶；加红枣冰糖枸杞再炖15分钟。',t:'银耳撕得越碎越易出胶。'},
+{n:'双皮奶',c:'甜品',i:'全脂牛奶500ml、蛋清3个、糖',s:'牛奶煮开放凉结奶皮；倒出留奶皮；蛋清加糖打散拌入牛奶过筛；倒回碗奶皮浮起；蒸15分钟。',t:'用全脂牛奶才结奶皮，蛋清过筛更滑。'},
+{n:'姜撞奶',c:'甜品',i:'牛奶250ml、姜汁、糖',s:'姜磨碎挤汁；牛奶加糖煮至80度；快速冲入姜汁碗；静置3分钟凝固。',t:'牛奶温度70-80度最佳，冲入要快。'},
+{n:'杨枝甘露',c:'甜品',i:'芒果2个、西米、椰浆、西柚、淡奶油、糖',s:'西米煮至透明过凉水；芒果打成泥；加椰浆淡奶油糖拌匀；加西米西柚粒冷藏。',t:'芒果选熟的甜，西柚解腻。'},
+{n:'烧仙草',c:'甜品',i:'仙草粉、水、牛奶、蜜红豆、花生、糖',s:'仙草粉加水煮开倒模凝固；切块；加牛奶蜜红豆花生糖。',t:'仙草粉比例按包装，凝固后冷藏更好吃。'},
+{n:'蛋挞',c:'甜品',i:'蛋挞皮、鸡蛋2个、牛奶100ml、淡奶油、糖',s:'牛奶淡奶油糖加热融化放凉；加蛋黄拌匀过筛；倒入蛋挞皮8分满；烤箱200度20分钟。',t:'蛋液过筛更嫩，烤箱温度按自家调整。'},
+{n:'冰糖雪梨',c:'甜品',i:'雪梨1个、冰糖、枸杞',s:'雪梨顶部切开挖核；填冰糖枸杞；盖回顶部；隔水炖40分钟。',t:'秋冬润肺，连汤带梨一起吃。'},
+{n:'红烧带鱼',c:'水产',i:'带鱼500g、姜蒜、生抽老抽、醋、糖、料酒',s:'带鱼切段腌一下煎金黄；下姜蒜加料加水；炖15分钟收汁。',t:'带鱼表面的银鳞别刮，营养且增香。'},
+{n:'干锅花菜',c:'素菜',i:'花菜1个、五花肉、干辣椒、蒜、生抽、豆瓣酱',s:'花菜掰小朵过油；五花肉煸出油加豆瓣酱蒜干辣椒；下花菜加生抽翻炒。',t:'花菜过油比焯水更香，干锅要炒干香。'},
+{n:'啤酒鸡翅',c:'禽蛋',i:'鸡翅10个、啤酒1罐、生抽老抽、姜蒜、糖',s:'鸡翅划刀焯水；煎两面金黄；加姜蒜生抽老抽糖倒啤酒；焖15分钟收汁。',t:'啤酒代水，肉质更嫩带麦香。'},
+{n:'酸豆角炒肉末',c:'小炒',i:'酸豆角200g、肉末150g、干辣椒、蒜、生抽',s:'酸豆角切末泡水去咸；热油炒肉末变色；加蒜末干辣椒酸豆角；加少许生抽翻炒。',t:'酸豆角本身咸，生抽少放。'},
+{n:'土豆烧鸡',c:'禽蛋',i:'鸡半只、土豆2个、姜蒜、八角、生抽老抽、糖',s:'鸡块焯水煸炒；炒糖色下鸡块；加姜蒜八角生抽老抽水；下土豆炖20分钟收汁。',t:'土豆后放，炖到绵软吸鸡汤。'}
+];
+
+/* ============ 厨房逻辑 ============ */
+const Cook={d:DB.get('cook',[]),save(){DB.set('cook',this.d)},
+  cats(){return['全部',...[...new Set(RECIPES.map(r=>r.c))]]},
+  render(){
+    const sel=$('#cCat');const cur=sel.value||'全部';sel.innerHTML='';
+    this.cats().forEach(c=>sel.insertAdjacentHTML('beforeend',`<option ${c===cur?'selected':''}>${c}</option>`));
+    $('#cCount').textContent='共'+RECIPES.length+'道';
+    this.renderGrid();
+    const list=$('#cList');list.innerHTML='';
+    if(!this.d.length){list.innerHTML='<div class="small" style="padding:8px 0">还没记录过，找道菜试试手🍳</div>';return}
+    [...this.d].reverse().forEach((r,i)=>{const ri=this.d.length-1-i;
+      list.insertAdjacentHTML('beforeend',`<div class="dentry"><div class="dh"><div><b>${r.dish}</b> <span class="small">${fmt(r.date)}</span></div><div class="ld" onclick="Cook.del(${ri})">删</div></div>${r.note?`<div style="font-size:13px;margin:4px 0">${r.note}</div>`:''}${r.img?`<img src="${r.img}">`:''}</div>`)});
+  },
+  renderGrid(){
+    const kw=$('#cSearch').value.trim(),cat=$('#cCat').value;
+    let arr=RECIPES.filter(r=>(cat==='全部'||r.c===cat)&&(!kw||r.n.includes(kw)||r.i.includes(kw)));
+    const g=$('#cGrid');g.innerHTML='';
+    if(!arr.length){g.innerHTML='<div class="small" style="grid-column:1/-1;text-align:center;padding:12px">没找到，换个关键词～</div>';return}
+    arr.slice(0,40).forEach((r,idx)=>{
+      const el=document.createElement('div');el.className='rmini';
+      el.innerHTML=`<div class="mn">${r.n}</div><div class="mc">${r.c} · ${r.i.slice(0,r.i.indexOf('、')>-1?r.i.indexOf('、'):6)}…</div>`;
+      el.onclick=()=>Cook.showDetail(r);g.appendChild(el)});
+  },
+  showDetail(r){
+    const res=$('#cDetail');res.classList.remove('hidden');
+    res.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0"><span class="ic">🍳</span>${r.n}</h2><button class="btn ghost sm" onclick="Cook.closeDetail()">关闭</button></div><div style="margin:6px 0"><span class="tag ok">${r.c}</span></div><div class="ri">🛒 ${r.i}</div><div class="rs">${r.s.split(/[;；]\s*/).map((s,i)=>`<div style="margin:3px 0">${s}</div>`).join('')}</div><div class="rt">💡 ${r.t}</div><div class="center" style="margin-top:12px"><button class="btn" onclick='Cook.doneCook(${JSON.stringify(r.n)})'>做完了，记一笔</button></div></div>`;
+    res.scrollIntoView({behavior:'smooth'});
+  },
+  closeDetail(){$('#cDetail').classList.add('hidden')},
+  doneCook(name){this.closeDetail();$('#cDish').value=name;this.openAdd()},
+  lucky(){const r=RECIPES[Math.floor(Math.random()*RECIPES.length)];this.showDetail(r)},
+  openAdd(){$('#cDate').value=today();$('#cMask').classList.add('show')},
+  closeAdd(){$('#cMask').classList.remove('show')},
+  add(){const d=$('#cDate').value||today(),dish=$('#cDish').value.trim(),note=$('#cNote').value.trim();
+    if(!dish){return}const f=$('#cImg').files[0];
+    if(f&&f.size>5*1024*1024){alert('图片太大(超5MB)，换小的～');return}
+    const go2=img=>{this.d.push({date:d,dish,note,img:img||null});this.d.sort((a,b)=>a.date<b.date?-1:1);$('#cDish').value='';$('#cNote').value='';$('#cImg').value='';this.closeAdd();this.save();this.render()};
+    if(f){const rd=new FileReader();rd.onload=function(){const im=new Image();im.onload=function(){const cv=document.createElement('canvas');let w=im.width,h=im.height,mx=400;if(w>mx){h*=mx/w;w=mx}cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,0,0,w,h);go2(cv.toDataURL('image/jpeg',.6))};im.src=rd.result};rd.readAsDataURL(f)}
+    else go2(null)},
+  del(i){if(confirm('删除这条记录？')){this.d.splice(i,1);this.save();this.render()}}
+};
+
+/* ============ 初始化 ============ */
+Save.render();Aunt.render();$('#aS').value=today();Law.stat();Cook.render();
+/* 搜索实时筛选 */
+$('#cSearch').addEventListener('input',()=>Cook.renderGrid());
+/* PWA: 捕获安装事件，显示"安装App"按钮，主动调起安装 */
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();deferredPrompt=e;
+  let btn=document.getElementById('installBtn');
+  if(!btn){
+    btn=document.createElement('button');btn.id='installBtn';btn.textContent='📲 安装App到桌面';
+    btn.style.cssText='position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:60;background:linear-gradient(135deg,#e4a8b8,#d98ba0);color:#fff;border:none;padding:12px 22px;border-radius:30px;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(228,139,160,.5);cursor:pointer;font-family:inherit;animation:viewIn .3s';
+    btn.onclick=installApp;document.body.appendChild(btn);
+  }
+  btn.style.display='block';
+});
+async function installApp(){
+  const btn=document.getElementById('installBtn');
+  if(!deferredPrompt){if(btn)btn.style.display='none';return}
+  deferredPrompt.prompt();
+  try{const r=await deferredPrompt.userChoice;if(r.outcome==='accepted'){if(btn)btn.style.display='none'}}catch(e){}
+  deferredPrompt=null;
+}
+window.addEventListener('appinstalled',()=>{const btn=document.getElementById('installBtn');if(btn)btn.style.display='none'});
+</script>
+</body>
+</html>
