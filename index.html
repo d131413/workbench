@@ -155,12 +155,37 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green)}
 .sheet{background:#fff;width:100%;max-width:480px;border-radius:22px 22px 0 0;padding:18px 18px calc(18px + var(--safe-b));animation:sheetUp .3s ease}
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
 .sheet h3{font-size:16px;margin-bottom:14px;text-align:center}
+/* 返回按钮（子页面） */
+.back{position:absolute;left:10px;top:max(14px,env(safe-area-inset-top));z-index:25;display:none;background:rgba(245,240,232,.7);border:none;color:var(--green);font-size:15px;padding:6px 10px;border-radius:10px;cursor:pointer;font-family:inherit}
+/* 首页看板 */
+.hero{background:linear-gradient(135deg,var(--green),#9bbf95);border-radius:var(--r);padding:18px 16px;color:#fff;margin-bottom:12px;box-shadow:var(--shadow2)}
+.hero h2{font-size:19px;font-weight:700;margin-bottom:2px}
+.hero .ds{font-size:12px;opacity:.92}
+.hgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px}
+.hcard{background:var(--card);border-radius:14px;padding:13px;box-shadow:var(--shadow);cursor:pointer;transition:transform .12s;text-align:left}
+.hcard:active{transform:scale(.97)}
+.hcard .hn{font-size:18px;font-weight:700;margin-left:4px}
+.hcard .hl{font-size:11px;color:var(--sub);margin-top:3px}
+/* 可点击统计 */
+.stat.clickable{cursor:pointer}
+.stat.clickable:active{transform:scale(.97)}
+/* 筛选 chips */
+.chips{display:flex;gap:8px;margin-bottom:12px}
+.chip{flex:1;text-align:center;padding:9px 0;border-radius:11px;background:#efe9df;color:var(--sub);font-size:13px;border:none;cursor:pointer;font-family:inherit;transition:.15s}
+.chip.on{background:var(--green);color:#fff;font-weight:600}
+/* 日历可点 */
+.cal .d{cursor:pointer}
+.cal .d:active{background:#efe9df}
+/* 悬浮快速记录按钮 */
+.fab{position:fixed;right:16px;bottom:calc(82px + env(safe-area-inset-bottom));width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;border:none;font-size:26px;box-shadow:0 8px 22px rgba(107,145,102,.5);z-index:35;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;line-height:1}
+.fab:active{transform:scale(.92)}
 </style>
 </head>
 <body>
 <div id="app">
   <div class="head">
-    <h1 id="headTitle">存钱计划</h1>
+    <button id="backBtn" class="back" onclick="hideSub()">‹ 返回</button>
+    <h1 id="headTitle">幸运工作台</h1>
     <div class="sub" id="headSub">幸运，今天也顺顺当当 😎</div>
   </div>
 
@@ -168,13 +193,35 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green)}
   <div class="ptr" id="ptr">
     <div class="ind"><div class="sp"></div><span id="ptrTxt">下拉刷新</span></div>
 
+    <!-- ===== 首页/今日看板 ===== -->
+    <section class="view active" id="v-home">
+      <div class="hero">
+        <h2 id="hGreet">你好，幸运 👋</h2>
+        <div class="ds" id="hDate"></div>
+      </div>
+      <div class="hgrid" id="hGrid"></div>
+      <div class="card">
+        <h2><span class="ic">⚡</span>快捷入口</h2>
+        <div class="hgrid">
+          <div class="hcard" onclick="go('save')"><div><span class="hi">💰</span><span class="hn">存钱</span></div><div class="hl">记账·预算</div></div>
+          <div class="hcard" onclick="go('health')"><div><span class="hi">🏃</span><span class="hn">健康</span></div><div class="hl">运动·体重·生理期</div></div>
+          <div class="hcard" onclick="go('study')"><div><span class="hi">📚</span><span class="hn">法考</span></div><div class="hl">今日科目</div></div>
+          <div class="hcard" onclick="go('cook')"><div><span class="hi">🍳</span><span class="hn">厨房</span></div><div class="hl">菜谱·日记</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2><span class="ic">📌</span>今日待办</h2>
+        <div id="hTodo2"></div>
+      </div>
+    </section>
+
     <!-- ===== 存钱 ===== -->
-    <section class="view active" id="v-save">
+    <section class="view" id="v-save">
       <div class="stats">
         <div class="stat"><div class="n" id="sBudget">--</div><div class="l">月预算(元)</div></div>
         <div class="stat g"><div class="n" id="sLeft">--</div><div class="l">本月剩余</div></div>
         <div class="stat b"><div class="n" id="sSpent">--</div><div class="l">本月已花</div></div>
-        <div class="stat o"><div class="n" id="sToday">--</div><div class="l">今日花费</div></div>
+        <div class="stat o clickable" onclick="Save.openList('today')"><div class="n" id="sToday">--</div><div class="l">今日花费 ›</div></div>
       </div>
       <div class="cheer" id="sCheer"></div>
 
@@ -223,12 +270,28 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green)}
       </div>
     </section>
 
+    <!-- ===== 存钱明细（子页） ===== -->
+    <section class="view" id="v-save-list">
+      <div class="card">
+        <div class="chips" id="sChips">
+          <button class="chip on" data-f="today" onclick="Save.openList('today')">今天</button>
+          <button class="chip" data-f="month" onclick="Save.openList('month')">本月</button>
+          <button class="chip" data-f="all" onclick="Save.openList('all')">全部</button>
+        </div>
+        <div class="stats" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+          <div class="stat"><div class="n" id="sListCount">0</div><div class="l">笔数</div></div>
+          <div class="stat o"><div class="n" id="sListSum">¥0</div><div class="l">合计</div></div>
+        </div>
+        <div id="sListBox"></div>
+      </div>
+    </section>
+
     <!-- ===== 健康 ===== -->
     <section class="view" id="v-health">
       <div class="seg" id="hSeg">
         <button class="on" data-h="sport">运动计划</button>
         <button data-h="weight">体重</button>
-        <button data-h="aunt">姨妈</button>
+        <button data-h="aunt">生理期</button>
       </div>
 
       <div id="h-sport">
@@ -269,10 +332,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green)}
         <div class="card">
           <h2><span class="ic">⚖️</span>记录体重</h2>
           <div class="row">
+            <div class="fld" style="flex:1"><input id="hWDate" type="date"></div>
             <div class="fld" style="flex:1"><input id="hW" type="number" step="0.1" inputmode="decimal" placeholder="体重kg"></div>
+          </div>
+          <div class="row">
             <div class="fld" style="flex:1"><input id="hH" type="number" step="0.1" inputmode="numeric" placeholder="身高cm(首次)"></div>
             <button class="btn sm" onclick="Health.addW()">记录</button>
           </div>
+          <div class="small" style="margin-top:4px">日期默认今天；想补记过去某天，选好日期再点记录即可。</div>
         </div>
         <div class="card">
           <h2><span class="ic">📉</span>体重趋势</h2>
@@ -361,11 +428,43 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green)}
 
   <!-- tabbar -->
   <nav class="tabbar" id="tabbar">
-    <button class="on" data-v="save"><span class="ti">💰</span>存钱</button>
+    <button class="on" data-v="home"><span class="ti">🏠</span>首页</button>
+    <button data-v="save"><span class="ti">💰</span>存钱</button>
     <button data-v="health"><span class="ti">🏃</span>健康</button>
-    <button data-v="study"><span class="ti">⚖️</span>学习</button>
+    <button data-v="study"><span class="ti">📚</span>法考</button>
     <button data-v="cook"><span class="ti">🍳</span>厨房</button>
   </nav>
+
+  <!-- 悬浮快速记录按钮 + 弹层 -->
+  <button class="fab" id="fab" onclick="openFab()">＋</button>
+  <div class="mask" id="fabSheet">
+    <div class="sheet">
+      <h3>快速记录</h3>
+      <div class="hgrid">
+        <div class="hcard" onclick="fabAct('save')"><div><span class="hi">💰</span><span class="hn">花销</span></div><div class="hl">记一笔</div></div>
+        <div class="hcard" onclick="fabAct('sport')"><div><span class="hi">🏃</span><span class="hn">运动</span></div><div class="hl">今日打卡</div></div>
+        <div class="hcard" onclick="fabAct('weight')"><div><span class="hi">⚖️</span><span class="hn">体重</span></div><div class="hl">称一下</div></div>
+        <div class="hcard" onclick="fabAct('period')"><div><span class="hi">🌸</span><span class="hn">生理期</span></div><div class="hl">记录</div></div>
+      </div>
+      <div class="row" style="margin-top:10px"><button class="btn ghost full" onclick="document.getElementById('fabSheet').classList.remove('show')">取消</button></div>
+    </div>
+  </div>
+
+  <!-- 生理期记录/修改弹层 -->
+  <div class="mask" id="periodSheet">
+    <div class="sheet">
+      <h3 id="pSheetTitle">记录生理期</h3>
+      <div class="row">
+        <div class="fld" style="flex:1"><label>开始日期</label><input id="pStart" type="date"></div>
+        <div class="fld" style="flex:1"><label>结束（可选）</label><input id="pEnd" type="date"></div>
+      </div>
+      <button class="btn full" onclick="Aunt.saveEdit()">保存</button>
+      <div class="row" style="margin-top:8px;gap:8px">
+        <button class="btn ghost full" onclick="Aunt.closeSheet()">取消</button>
+        <button class="btn ghost full" id="pDeleteBtn" style="color:#cf6a4a;border-color:#cf6a4a;display:none" onclick="Aunt.delEdit()">删除</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- 添加菜谱日记的底部弹层 -->
@@ -392,21 +491,82 @@ const today=()=>fmtDate(new Date());
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
 const fmt=d=>{if(!d)return'--';const x=new Date(d);return(x.getMonth()+1)+'/'+x.getDate()};
 const days=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
-const TITLES={save:'存钱计划',health:'健康与运动',study:'法考学习',cook:'厨房日记'};
+const TITLES={home:'幸运工作台',save:'存钱计划',health:'健康与运动',study:'法考学习',cook:'厨房日记'};
 
 /* ============ 导航 ============ */
+let currentMain='home';
 function go(v){
   $$('.view').forEach(x=>x.classList.remove('active'));
   $('#v-'+v).classList.add('active');
   $$('#tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   $('#headTitle').textContent=TITLES[v];
+  currentMain=v;
+  if(v==='home')Home.render();
   if(v==='health')Health.render();
   if(v==='cook')Cook.render();
   if(v==='study')Law.stat();
   if(v==='save')Save.render();
+  document.getElementById('tabbar').style.display='';
+  $('#backBtn').style.display='none';
+  if($('#fab'))$('#fab').style.display='';
   window.scrollTo({top:0,behavior:'smooth'});
 }
+function showSub(id,title){
+  $$('.view').forEach(x=>x.classList.remove('active'));
+  $('#v-'+id).classList.add('active');
+  $('#headTitle').textContent=title;
+  document.getElementById('tabbar').style.display='none';
+  $('#backBtn').style.display='flex';
+  if($('#fab'))$('#fab').style.display='none';
+  window.scrollTo({top:0});
+}
+function hideSub(){ go(currentMain); }
 $$('#tabbar button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+
+/* ===== 首页看板 ===== */
+const Home={
+  render(){
+    const now=new Date();
+    const wd=['周日','周一','周二','周三','周四','周五','周六'][now.getDay()];
+    const h=now.getHours();
+    $('#hDate').textContent=`${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${wd}`;
+    $('#hGreet').textContent= h<6?'夜深了，注意休息 🌙': h<11?'早上好，幸运 ☀️': h<14?'中午好，幸运 🍱': h<18?'下午好，幸运 🍵': h<22?'晚上好，幸运 🌆':'夜深了，注意休息 🌙';
+    const sd=Save.d, ymNow=ym(now);
+    const spentMonth=sd.items.filter(r=>r.date.slice(0,7)===ymNow).reduce((s,r)=>s+r.amt,0);
+    const td=sd.items.filter(r=>r.date===today()).reduce((s,r)=>s+r.amt,0);
+    const hd=Health.d;
+    const todayMin=hd.dones.filter(s=>s.date===today()).reduce((a,b)=>a+b.min,0);
+    const goal=hd.goal||30;
+    const lastW=hd.weights.length?hd.weights[hd.weights.length-1]:null;
+    const ad=Aunt.d; let next='—';
+    if(ad.length){let cs=[];for(let i=1;i<ad.length;i++)cs.push(days(ad[i-1].start,ad[i].start));const cyc=cs.length?Math.round(cs.reduce((a,b)=>a+b)/cs.length):28;const last=new Date(ad[ad.length-1].start);const nx=new Date(last.getTime()+cyc*864e5);next=fmt(nx.toISOString().slice(0,10));}
+    const g=$('#hGrid');g.innerHTML='';
+    const cards=[
+      {ic:'💸',n:'¥'+td.toFixed(0),l:'今日花费（本月 ¥'+spentMonth.toFixed(0)+'）',act:()=>Save.openList('today')},
+      {ic:'🏃',n:todayMin+'/'+goal+'分',l:'今日运动打卡',act:()=>go('health')},
+      {ic:'⚖️',n:lastW?lastW.w+'kg':'—',l:lastW&&hd.height?'BMI '+(lastW.w/Math.pow(hd.height/100,2)).toFixed(1):'记录体重',act:()=>go('health')},
+      {ic:'🌸',n:ad.length?next:'—',l:'生理期预计下次',act:()=>go('health')}
+    ];
+    cards.forEach(c=>{const el=document.createElement('div');el.className='hcard';el.innerHTML=`<div><span class="hi">${c.ic}</span><span class="hn">${c.n}</span></div><div class="hl">${c.l}</div>`;el.onclick=c.act;g.appendChild(el)});
+    const tb=$('#hTodo2');tb.innerHTML='';const items=[];
+    if(td===0)items.push('今天还没记账，点上方「今日花费」记一笔～');
+    if(todayMin<goal)items.push(`今天运动还差 ${goal-todayMin} 分钟，动一动💪`);
+    if(!lastW)items.push('还没记录体重，称一下吧⚖️');
+    if(ad.length===0)items.push('记录生理期，周期预测更准🌸');
+    if(Law.st.today.date!==today())items.push('今天法考还没做，去学习看看📚');
+    if(!items.length)items.push('今天各项都棒棒的，继续保持！🎉');
+    items.forEach(t=>tb.insertAdjacentHTML('beforeend',`<div class="li"><div class="lt">${t}</div></div>`));
+  }
+};
+
+/* 悬浮快速记录 */
+function openFab(){const fs=document.getElementById('fabSheet');if(fs)fs.classList.add('show')}
+function fabAct(t){const fs=document.getElementById('fabSheet');if(fs)fs.classList.remove('show');
+  if(t==='save'){go('save');setTimeout(()=>{if($('#sAmt'))$('#sAmt').focus()},300)}
+  else if(t==='sport'){go('health');setTimeout(()=>{$$('#hSeg button').forEach(b=>b.classList.toggle('on',b.dataset.h==='sport'));$('#h-sport').classList.remove('hidden');$('#h-weight').classList.add('hidden');$('#h-aunt').classList.add('hidden');Health.render();if($('#hPlan'))$('#hPlan').focus()},350)}
+  else if(t==='weight'){go('health');setTimeout(()=>{$$('#hSeg button').forEach(b=>b.classList.toggle('on',b.dataset.h==='weight'));$('#h-sport').classList.add('hidden');$('#h-weight').classList.remove('hidden');$('#h-aunt').classList.add('hidden');Health.renderW()},350)}
+  else if(t==='period'){go('health');setTimeout(()=>{$$('#hSeg button').forEach(b=>b.classList.toggle('on',b.dataset.h==='aunt'));$('#h-sport').classList.add('hidden');$('#h-weight').classList.add('hidden');$('#h-aunt').classList.remove('hidden');Aunt.render();Aunt.openEdit(-1)},350)}
+}
 
 /* 健康子tab */
 $$('#hSeg button').forEach(b=>b.onclick=()=>{
@@ -508,6 +668,20 @@ const Save={d:DB.get('save',{budget:0,items:[]}),save(){DB.set('save',this.d);th
       const mx=Math.max(this.d.budget/30||200,td||100);
       const b=document.createElement('div');b.className='b';b.style.height=Math.max(3,sum/mx*80)+'px';
       if(sum===0)b.style.opacity=.25;b.innerHTML='<span>'+(d.getMonth()+1)+'/'+d.getDate()+'</span>';ch.appendChild(b)}
+  },
+  openList(f){
+    this._filter=f||'today';
+    $$('#sChips .chip').forEach(c=>c.classList.toggle('on',c.dataset.f===this._filter));
+    const fmap={today:r=>r.date===today(),month:r=>r.date.slice(0,7)===ym(new Date()),all:()=>true};
+    const flt=fmap[this._filter]||fmap.today;
+    const list=this.d.items.filter(flt).sort((a,b)=>b.date===a.date?(b.id-a.id):(a.date<b.date?1:-1));
+    const sum=list.reduce((s,r)=>s+r.amt,0);
+    $('#sListCount').textContent=list.length;
+    $('#sListSum').textContent='¥'+sum.toFixed(0);
+    const box=$('#sListBox');box.innerHTML='';
+    if(!list.length){box.innerHTML='<div class="small" style="padding:14px 0;text-align:center">这一档还没有记录～</div>';}
+    list.forEach(r=>{box.insertAdjacentHTML('beforeend',`<div class="li"><div style="flex:1"><div class="lt">${r.note||'未备注'} <span class="tag">${r.cat}</span></div><div class="ls">${fmt(r.date)}</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-weight:700">¥${r.amt}</span><span class="ld" onclick="Save.del(${r.id})">删</span></div></div>`)});
+    showSub('save-list','花费明细');
   }
 };
 
@@ -524,7 +698,8 @@ const Health={d:DB.get('health',{height:0,weights:[],goal:30,plans:[],dones:[]})
     this.d.dones=this.d.dones.filter(x=>x.pid!==id);this.save();this.render()},
   delD(id){const dd=this.d.dones.find(x=>x.id===id);if(dd&&dd.pid){const p=this.d.plans.find(x=>x.id===dd.pid);if(p)p.done=false}
     this.d.dones=this.d.dones.filter(x=>x.id!==id);this.save();this.render()},
-  addW(){const w=+$('#hW').value,h=+$('#hH').value;if(!w)return;if(h)this.d.height=h;this.d.weights.push({date:today(),w});$('#hW').value='';this.save();this.renderW()},
+  addW(){const w=+$('#hW').value,h=+$('#hH').value,dv=$('#hWDate').value||today();if(!w)return;if(h)this.d.height=h;const ex=this.d.weights.find(x=>x.date===dv);if(ex)ex.w=w;else this.d.weights.push({date:dv,w});this.d.weights.sort((a,b)=>a.date<b.date?-1:1);$('#hW').value='';$('#hWDate').value='';this.save();this.renderW()},
+  delW(i){this.d.weights.splice(i,1);this.save();this.renderW()},
   render(){
     const goal=this.d.goal||30;
     const todayDones=this.d.dones.filter(s=>s.date===today());
@@ -562,6 +737,7 @@ const Health={d:DB.get('health',{height:0,weights:[],goal:30,plans:[],dones:[]})
     ds.forEach(s=>{dl.insertAdjacentHTML('beforeend',`<div class="li"><div><div class="lt">${s.type} · ${s.min}分钟</div><div class="ls">${fmt(s.date)}</div></div><div class="ld" onclick="Health.delD(${s.id})">删</div></div>`)});
   },
   renderW(){
+    if($('#hWDate')&&!$('#hWDate').value)$('#hWDate').value=today();
     const w=this.d.weights,lastW=w.length?w[w.length-1].w:0,h=this.d.height;
     $('#hWeight').textContent=lastW||'--';
     $('#hBmi').textContent=(lastW&&h)?(lastW/Math.pow(h/100,2)).toFixed(1):'--';
@@ -571,7 +747,9 @@ const Health={d:DB.get('health',{height:0,weights:[],goal:30,plans:[],dones:[]})
       r.forEach(x=>{const b=document.createElement('div');b.className='b';b.style.height=(30+(x.w-mn)/rg*55)+'px';b.innerHTML='<span>'+x.w+'</span>';ch.appendChild(b)})}
     else ch.innerHTML='<div class="small" style="width:100%;text-align:center">记几次体重就能看到趋势</div>';
     const wl=$('#hWList');wl.innerHTML='';
-    [...w].reverse().slice(0,10).forEach(x=>wl.insertAdjacentHTML('beforeend',`<div class="li"><div class="lt">${x.w} kg</div><div class="ls">${fmt(x.date)}</div></div>`));
+    const sw=[...w].map((x,i)=>({x,i})).sort((a,b)=>b.x.date<a.x.date?1:-1).slice(0,20);
+    if(!sw.length)wl.innerHTML='<div class="small">还没有体重记录，称一下记下来吧⚖️</div>';
+    sw.forEach(o=>wl.insertAdjacentHTML('beforeend',`<div class="li"><div style="flex:1"><div class="lt">${o.x.w} kg</div><div class="ls">${fmt(o.x.date)}</div></div><div class="ld" onclick="Health.delW(${o.i})">删</div></div>`));
   }
 };
 
@@ -601,7 +779,7 @@ const Aunt={d:DB.get('aunt',[]),save(){DB.set('aunt',this.d);this.render()},
     if(!d.length){al.innerHTML='<div class="small">还没记录</div>';return}
     [...d].reverse().forEach((r,i)=>{const ri=d.length-1-i;let c='',dy=r.end?days(r.start,r.end)+1:'';
       if(ri>0)c=days(d[ri-1].start,r.start);
-      al.insertAdjacentHTML('beforeend',`<div class="li"><div><div class="lt">${fmt(r.start)} → ${r.end?fmt(r.end):'进行中'}</div><div class="ls">周期${c||'—'}天 · 经期${dy||'—'}天</div></div><div class="ld" onclick="Aunt.del(${ri})">删</div></div>`)});
+      al.insertAdjacentHTML('beforeend',`<div class="li"><div style="flex:1"><div class="lt">${fmt(r.start)} → ${r.end?fmt(r.end):'进行中'}</div><div class="ls">周期${c||'—'}天 · 经期${dy||'—'}天</div></div><div style="display:flex;gap:12px"><span class="ld" onclick="Aunt.openEdit(${ri})">改</span><span class="ld" onclick="Aunt.del(${ri})">删</span></div></div>`)});
   },
   cal(){const cal=$('#aCal');cal.innerHTML='';
     const now=new Date(),y=now.getFullYear(),m=now.getMonth();
@@ -610,8 +788,24 @@ const Aunt={d:DB.get('aunt',[]),save(){DB.set('aunt',this.d);this.render()},
     const dim=new Date(y,m+1,0).getDate();let predict=[];
     if(this.d.length){const last=new Date(this.d[this.d.length-1].start);let cs=[];for(let i=1;i<this.d.length;i++)cs.push(days(this.d[i-1].start,this.d[i].start));const cyc=cs.length?Math.round(cs.reduce((a,b)=>a+b)/cs.length):28;const nx=new Date(last.getTime()+cyc*864e5);if(nx.getMonth()===m&&nx.getFullYear()===y)predict.push(nx.getDate())}
     const pd=new Set();this.d.forEach(r=>{const s=new Date(r.start),e=r.end?new Date(r.end):new Date(r.start.getTime()+4*864e5);for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1))if(d.getMonth()===m&&d.getFullYear()===y)pd.add(d.getDate())});
-    for(let d=1;d<=dim;d++){let cls='d';if(d===now.getDate())cls+=' today';else if(pd.has(d))cls+=' per';else if(predict.includes(d))cls+=' pre';cal.insertAdjacentHTML('beforeend',`<div class="${cls}">${d}</div>`)}
-  }
+    for(let d=1;d<=dim;d++){let cls='d';if(d===now.getDate())cls+=' today';else if(pd.has(d))cls+=' per';else if(predict.includes(d))cls+=' pre';cal.insertAdjacentHTML('beforeend',`<div class="${cls}" onclick="Aunt.tapDay(${d})">${d}</div>`)}
+  },
+  _editIdx:-1,
+  openEdit(i,startStr){this._editIdx=i;const r=i>=0?this.d[i]:null;
+    $('#pSheetTitle').textContent=i>=0?'修改生理期':'记录生理期';
+    $('#pStart').value=r?r.start:(startStr||today());
+    $('#pEnd').value=r?r.end||'':'';
+    $('#pDeleteBtn').style.display=i>=0?'block':'none';
+    $('#periodSheet').classList.add('show');},
+  saveEdit(){const s=$('#pStart').value,e=$('#pEnd').value;if(!s)return;
+    if(e&&e<s){alert('结束日期不能早于开始日期');return}
+    if(this._editIdx>=0){this.d[this._editIdx].start=s;this.d[this._editIdx].end=e||null;}
+    else this.d.push({start:s,end:e||null});
+    this.d.sort((a,b)=>a.start<b.start?-1:1);this.closeSheet();this.save()},
+  closeSheet(){$('#periodSheet').classList.remove('show')},
+  delEdit(){if(this._editIdx>=0)this.d.splice(this._editIdx,1);this.closeSheet();this.save()},
+  tapDay(d){const now=new Date();const ds=fmtDate(new Date(now.getFullYear(),now.getMonth(),d));
+    const idx=this.d.findIndex(r=>r.start===ds);if(idx>=0)this.openEdit(idx);else this.openEdit(-1,ds)}
 };
 
 /* ============ 法考题库 ============ */
@@ -926,7 +1120,7 @@ const Cook={d:DB.get('cook',[]),save(){DB.set('cook',this.d)},
 };
 
 /* ============ 初始化 ============ */
-Save.render();Aunt.render();$('#aS').value=today();Law.stat();Cook.render();
+Save.render();Aunt.render();$('#aS').value=today();Law.stat();Cook.render();Home.render();
 /* 搜索实时筛选 */
 $('#cSearch').addEventListener('input',()=>Cook.renderGrid());
 /* PWA: 捕获安装事件，显示"安装App"按钮，主动调起安装 */
